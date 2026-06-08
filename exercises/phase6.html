@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 6 Exercises · Make a Change</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-key="phase6">
+<header class="hero">
+  <div class="crumb"><a href="../learning-guide.html">← Interactive Learning Guide</a> · Phase 6</div>
+  <h1>Phase 6 — Make a Change: Exercises</h1>
+  <p>Go from reader to contributor inside GEMSTAR itself, ordered least → most invasive. Each touches a real part of the codebase.</p>
+</header>
+<div class="progressbar"><div class="inner">
+  <strong style="font-size:13px">Steps done</strong>
+  <div class="bar"><span id="bar"></span></div><span class="pct" id="pct">0 / 0</span>
+</div></div>
+
+<div class="wrap">
+
+  <div class="callout arc"><span class="lab">↪ The assignment</span><em>The finish line. The parameter the authority keeps asking about is one you can now add — and watch it change whether the shuttle sees the pedestrian in time.</em></div>
+
+  <div class="callout warn"><b>Build reality:</b> tasks that <em>run</em> code need a working GEMSTAR build. On <b>Windows</b>
+  the whole project builds &amp; runs, so do these for real. On <b>macOS</b> the native-lib features (esmini/SUMO) won't link
+  yet, but the <b>lidar / visualizer</b> path is Mac-friendly and is the target here. If you can't build at all, do each
+  task as a <b>code change + reasoned walkthrough</b>
+  (what would happen on play) and verify the logic by reading.</div>
+
+  <!-- EX 1 -->
+  <h2 class="ex">Exercise 1 — Add a new config key to the lidar sensor</h2>
+  <div class="goalrow"><span class="chip lvl">Starter</span><span class="chip time">~45 min</span>
+    <span class="chip">Touches: GemstarLidarTest.ini → LidarSensorManager → SimpleLidar</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Add a parameter the sensor honors — e.g. a <code>MinRange</code> that discards hits closer than N units (a real lidar has a dead zone).</p>
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">In <a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Resources/GemstarLidarTest.ini" href="../../Plugins/GameFeatures/ue_lidar_feature/Resources/GemstarLidarTest.ini">GemstarLidarTest.ini</a>, add <code>MinRange=200</code> to a sensor section.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">In the config struct used by <a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Public/LidarSensorManager.h" href="../../Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Public/LidarSensorManager.h">LidarSensorManager.h</a>, add a <code>float MinRange = 0.f;</code> field (follow the existing fields' style).</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Where the manager parses the ini (<a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/LidarSensorManager.cpp" href="../../Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/LidarSensorManager.cpp">.cpp</a>), copy an existing <code>GetFloat</code>-style read and add one for <code>MinRange</code>; pass it into the spawned <code>SimpleLidar</code>.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">In <a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/SimpleLidar.cpp" href="../../Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/SimpleLidar.cpp">SimpleLidar.cpp</a>, after a ray hit, discard the point if <code>HitDistance &lt; MinRange</code>.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Build the lidar/visualizer; open the lidar test map; play. Raise <code>MinRange</code> in the ini and re-play.</span></label></li>
+    </ol>
+    <div class="expect">Points nearer than <code>MinRange</code> vanish from the visualized cloud; raising the value carves a bigger hole around the sensor. No recompile needed to change the value — only to add the field.</div>
+    <div class="callout tip"><b>Why this order?</b> ini (data) → struct (carrier) → parse (read) → sensor (use). The same four hops apply to <em>any</em> new sensor parameter in GEMSTAR.</div>
+    <div class="selfcheck">If you change only the ini value (not code) and it takes effect, but adding the field required a rebuild — why? (Values are data read at runtime; the struct field is compiled code.)</div>
+  </div>
+
+  <!-- EX 2 -->
+  <h2 class="ex">Exercise 2 — Trace the data path with UE_LOG</h2>
+  <div class="goalrow"><span class="chip lvl">Starter</span><span class="chip time">~30 min</span>
+    <span class="chip">Touches: SimpleLidar, SensorDataDispatcher, VisualizerManager</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Prove the Phase 4 path is real by watching data move at runtime — and practice the 5.7-strict <code>UE_LOG</code> format rules.</p>
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">In <code>SimpleLidar</code>, after generating the cloud, log the count: <code>UE_LOG(LogTemp, Log, TEXT("Lidar produced %d points"), NumPoints);</code></span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">In the dispatcher's broadcast method, log how many receivers it's notifying.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">In the visualizer's update callback, log how many points it received.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Build, play, read the Output Log: producer count → receiver count → consumer count, in order.</span></label></li>
+    </ol>
+    <div class="expect">The three numbers line up (points produced = points received), confirming the producer→dispatcher→consumer chain. The log ordering shows the push happening each frame.</div>
+    <details class="tshoot"><summary>Troubleshooting — 5.7 format-string errors</summary>
+      <table>
+        <tr><td><b>Compile error on UE_LOG</b></td><td>We enabled <code>bValidateFormatStrings=true</code>. <code>%d</code> needs an int, <code>%f</code> a float/double, <code>%s</code> needs a <code>TCHAR*</code> — use <code>*MyFString</code> to deref an <code>FString</code>. Mismatches now fail the build.</td></tr>
+        <tr><td><b>No output</b></td><td>Verbosity: <code>Log</code> may be filtered — use <code>Warning</code> to be sure it shows.</td></tr>
+      </table>
+    </details>
+    <div class="selfcheck">You've now <em>observed</em> what you read in Phase 4. Could you set a breakpoint at the same three spots and step through instead? (Yes — same path, debugger instead of logs.)</div>
+  </div>
+
+  <!-- EX 3 -->
+  <h2 class="ex">Exercise 3 — Add &amp; log a field through the OSI conversion</h2>
+  <div class="goalrow"><span class="chip lvl">Intermediate</span><span class="chip time">~1–1.5 hr</span>
+    <span class="chip">Touches: ToOSI, the logger</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Follow data into the OSI layer — the heart of GEMSTAR's interoperability — by populating one more field and confirming it in the log output.</p>
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Private/Utils/ToOSI.cpp" href="../../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Private/Utils/ToOSI.cpp">ToOSI.cpp</a>. Pick a conversion (e.g. a moving-object builder) and find an OSI field that's currently left default.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Cross-check the field exists by opening the matching message header in <a class="path" data-file="Plugins/gemstar_interfaces/ThirdParty/osi3/include/osi3/osi_object.pb.h" href="../../Plugins/gemstar_interfaces/ThirdParty/osi3/include/osi3/osi_object.pb.h">osi_object.pb.h</a> (protobuf-generated — note the <code>set_*</code> / <code>mutable_*</code> accessors).</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Populate it from the UE side (e.g. set a dimension or a type enum from the actor's data) using the generated setter.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">In the logger (<span class="path">ue_logger_feature</span>), add a <code>UE_LOG</code> printing your field as it writes the message, or inspect the resulting trace in <code>Output/</code>.</span></label></li>
+    </ol>
+    <div class="expect">Your value appears in the logged OSI message / trace. You've connected UE world state → OSI wire format — the exact bridge that makes GEMSTAR interoperable with other ASAM-OSI tools.</div>
+    <div class="callout note"><b>Heads up:</b> this touches <code>gemstar_interfaces</code>, which depends on OSI/protobuf. On <b>Windows</b> those link and run, so you can do it live. On <b>macOS</b> they're Windows-only binaries in this repo, so do it as a code change + reasoned read unless you've ported the libs.</div>
+    <div class="selfcheck">Why is <code>ToOSI</code> the single most strategic file to understand in GEMSTAR? (It's the one boundary every feature crosses to speak the common OSI language — change it and you affect logging, communication, and interop everywhere.)</div>
+  </div>
+
+  <!-- EX 4 -->
+  <h2 class="ex">Exercise 4 — Sketch a new sensor feature plugin (capstone)</h2>
+  <div class="goalrow"><span class="chip lvl">Advanced</span><span class="chip time">design exercise</span>
+    <span class="chip">Touches: architecture-level understanding</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Design (and optionally scaffold) a new feature mirroring <code>ue_lidar_feature</code> — proof you've internalized the architecture.</p>
+    <h3 class="kicker">Design checklist — answer each before writing code</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">What's your sensor (e.g. a simple ultrasonic/range sensor)? What data does it produce?</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Which GEMSTAR interfaces will your manager implement? (Likely <code>IGEMSTARManager</code> + a sensor data dispatcher — mirror the lidar manager.)</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">What <code>.uplugin</code> + module layout do you need? Copy <span class="path">ue_lidar_feature</span>'s structure: a <code>*Runtime</code> module depending on <code>GEMSTAR_Interfaces</code>, a <code>*_Loader</code>, a manager, a sensor actor, a test ini.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">What config keys go in your ini, and how does <code>AGEMSTARRoot</code> activate you?</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">(Optional build) Scaffold the plugin folder + files; get it to compile empty; then fill in the sensor logic.</span></label></li>
+    </ol>
+    <div class="selfcheck">If you can answer all five without re-reading the lidar feature, you've reached the goal of the whole plan: you understand GEMSTAR's architecture well enough to extend it.</div>
+  </div>
+
+  <a class="backlink" href="../learning-guide.html">← Back to the main guide</a>
+  <footer>Phase 6 exercises · progress saved locally</footer>
+</div>
+<script src="steps.js"></script>
+</body>
+</html>

@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GEMSTAR · Interactive Learning Guide</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#161c24; --panel2:#1d2733; --ink:#e6edf3; --muted:#9aa7b4;
+    --accent:#4dd0c1; --accent2:#f0a35e; --line:#2a3543; --ok:#3fb950; --bad:#f85149;
+    --code:#1b2531;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+       background:var(--bg);color:var(--ink)}
+  a{color:var(--accent)}
+  header.hero{padding:28px 22px 18px;background:linear-gradient(135deg,#13202b,#0f1419);
+       border-bottom:1px solid var(--line)}
+  header.hero h1{margin:0 0 4px;font-size:24px}
+  header.hero p{margin:0;color:var(--muted)}
+  .wrap{max-width:920px;margin:0 auto;padding:0 18px 80px}
+
+  /* progress */
+  .progressbar{position:sticky;top:0;z-index:20;background:var(--panel);
+       border-bottom:1px solid var(--line);padding:10px 18px}
+  .progressbar .inner{max-width:920px;margin:0 auto;display:flex;align-items:center;gap:12px}
+  .bar{flex:1;height:10px;background:var(--panel2);border-radius:6px;overflow:hidden}
+  .bar > span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));
+       transition:width .3s ease}
+  .pct{font-variant-numeric:tabular-nums;color:var(--muted);min-width:74px;text-align:right}
+  button.reset{background:transparent;border:1px solid var(--line);color:var(--muted);
+       border-radius:7px;padding:5px 10px;cursor:pointer;font-size:12px}
+  button.reset:hover{color:var(--ink);border-color:var(--accent)}
+
+  /* phase cards */
+  .phase{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:18px 0;overflow:hidden}
+  .phase > .head{display:flex;align-items:center;gap:12px;padding:16px 18px;cursor:pointer;user-select:none}
+  .phase > .head:hover{background:var(--panel2)}
+  .phase .num{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+       background:var(--panel2);border:1px solid var(--line);font-weight:700;font-size:13px;color:var(--accent)}
+  .phase .titles{flex:1}
+  .phase .titles h2{margin:0;font-size:17px}
+  .phase .titles .sub{color:var(--muted);font-size:12.5px;margin-top:2px}
+  .phase .donecount{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .phase .chev{transition:transform .2s;color:var(--muted)}
+  .phase.collapsed .chev{transform:rotate(-90deg)}
+  .phase.collapsed .body{display:none}
+  .body{padding:4px 18px 18px;border-top:1px solid var(--line)}
+  .phase.done .num{background:var(--ok);color:#06210e;border-color:var(--ok)}
+
+  h3.kicker{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2);
+       margin:18px 0 8px}
+  ul.tasks{list-style:none;padding:0;margin:8px 0}
+  ul.tasks li{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px dashed var(--line)}
+  ul.tasks li:last-child{border-bottom:0}
+  ul.tasks input{margin-top:3px;width:17px;height:17px;accent-color:var(--accent);cursor:pointer;flex:0 0 auto}
+  ul.tasks label{cursor:pointer}
+  ul.tasks li.checked label{color:var(--muted);text-decoration:line-through}
+
+  code,.path{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+  .path{background:var(--code);border:1px solid var(--line);border-radius:5px;padding:1px 6px;
+       color:#bcd; text-decoration:none; display:inline-block}
+  a.path:hover{border-color:var(--accent);color:var(--accent)}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:9px;padding:12px 14px;
+       overflow:auto;font-size:12.5px;line-height:1.5}
+  table{border-collapse:collapse;width:100%;margin:10px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{background:var(--panel2)}
+
+  .note{border-left:3px solid var(--accent2);background:var(--panel2);padding:10px 14px;border-radius:0 8px 8px 0;margin:12px 0}
+  .note.warn{border-left-color:var(--bad)}
+
+  /* quiz */
+  .quiz{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:14px 0}
+  .quiz .q{font-weight:600;margin-bottom:8px}
+  .quiz .opt{display:block;width:100%;text-align:left;background:var(--code);border:1px solid var(--line);
+       color:var(--ink);border-radius:8px;padding:9px 12px;margin:6px 0;cursor:pointer;font-size:13.5px}
+  .quiz .opt:hover{border-color:var(--accent)}
+  .quiz .opt.correct{border-color:var(--ok);background:#11261a}
+  .quiz .opt.wrong{border-color:var(--bad);background:#2a1414}
+  .quiz .fb{font-size:13px;margin-top:8px;min-height:18px}
+  .quiz .fb.ok{color:var(--ok)} .quiz .fb.no{color:var(--bad)}
+
+  /* reveal */
+  details.reveal{background:var(--code);border:1px solid var(--line);border-radius:9px;padding:0 14px;margin:12px 0}
+  details.reveal summary{cursor:pointer;padding:11px 0;font-weight:600;color:var(--accent)}
+  details.reveal[open]{padding-bottom:12px}
+  .tag{display:inline-block;font-size:11px;color:var(--muted);border:1px solid var(--line);
+       border-radius:20px;padding:1px 9px;margin-left:6px}
+
+  /* video links */
+  a.vid{display:flex;align-items:center;gap:11px;text-decoration:none;background:var(--code);
+       border:1px solid var(--line);border-radius:9px;padding:9px 12px;margin:6px 0;color:var(--ink)}
+  a.vid:hover{border-color:var(--accent2)}
+  a.vid .play{flex:0 0 auto;width:27px;height:27px;border-radius:50%;display:grid;place-items:center;
+       background:#c4302b;color:#fff;font-size:11px}
+  a.vid .meta{flex:1;min-width:0}
+  a.vid .meta b{display:block;font-size:13.5px}
+  a.vid .meta span{font-size:11.5px;color:var(--muted)}
+  a.vid .src{font-size:10.5px;color:var(--muted);border:1px solid var(--line);border-radius:20px;
+       padding:1px 8px;flex:0 0 auto;white-space:nowrap}
+
+  /* walkthrough button */
+  a.walk{display:inline-flex;align-items:center;gap:8px;text-decoration:none;margin:10px 0 4px;
+       background:linear-gradient(135deg,#1c3a39,#16252b);border:1px solid var(--accent);
+       color:var(--accent);border-radius:9px;padding:9px 14px;font-size:13.5px;font-weight:600}
+  a.walk:hover{background:linear-gradient(135deg,#23514e,#1a2d34)}
+  a.walk .arrow{font-size:16px}
+
+  /* story */
+  .story{background:radial-gradient(120% 140% at 0% 0%,#1a2c33,#141b22);border:1px solid var(--line);
+       border-left:3px solid var(--accent2);border-radius:12px;padding:16px 20px;margin:18px 0}
+  .story .label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent2);margin-bottom:8px}
+  .story p{margin:0 0 9px}
+  .story p:last-child{margin-bottom:0}
+  .story .q{color:var(--accent);font-style:italic}
+  .chapter{border-left:3px solid var(--accent);background:var(--panel2);border-radius:0 8px 8px 0;
+       padding:10px 14px;margin:2px 0 14px;font-size:14px}
+  .chapter .ch{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);
+       margin-bottom:3px;font-weight:700}
+  .chapter .beat{color:var(--ink)}
+  .chapter .arc{color:var(--muted);font-style:italic}
+  footer{color:var(--muted);font-size:12px;text-align:center;padding:24px}
+</style>
+</head>
+<body>
+<header class="hero">
+  <h1>GEMSTAR — Interactive Learning Guide</h1>
+  <p>Unreal Engine 5 &amp; the GEMSTAR sensor-simulation toolchain. Check tasks off as you go — your progress is saved in this browser.</p>
+</header>
+
+<div class="progressbar">
+  <div class="inner">
+    <strong style="font-size:13px">Progress</strong>
+    <div class="bar"><span id="barfill"></span></div>
+    <span class="pct" id="pct">0 / 0</span>
+    <button class="reset" id="toggleAllBtn">Expand all</button>
+    <button class="reset" id="resetBtn">Reset</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="story">
+    <div class="label">Your assignment</div>
+    <p>A transit authority is weeks from approving an autonomous shuttle for a downtown route. Before it carries a
+    single passenger, someone has to answer one question: <span class="q">when a pedestrian steps off the curb at dusk,
+    will the shuttle's sensors actually see them?</span></p>
+    <p>You don't test that on a live street. You test it in <b>GEMSTAR</b> — and you've just joined the team that runs it.
+    The trouble: GEMSTAR is a machine of seven interlocking Unreal plugins, and today it's a black box to you. Over the
+    next ~40 focused hours your job is to understand it well enough to <b>build that pedestrian-detection scenario
+    yourself</b> — and to add the one sensor parameter the authority keeps asking about.</p>
+    <p>Each phase below is a chapter on that path. By the last one you won't be reading the machine — you'll be changing it.</p>
+  </div>
+
+  <div class="note">
+    <strong>How to use:</strong> Work phases top→bottom. Tick each task; the bar fills as you go.
+    Quizzes give instant feedback; checkpoints hide the answer until you click.
+    <span class="path">Open file</span> links jump to the real source in VS Code — they auto-detect your repo location, so they
+    work on <b>Windows or macOS</b> as long as you open this guide from inside the cloned repo (<code>learning-guide/</code>).
+    <b>Platform differences</b> (build toolchain, what runs) are summarized in the table at the bottom — works on both;
+    Windows runs the most.
+  </div>
+
+  <!-- ============ PHASE 0 ============ -->
+  <section class="phase collapsed" data-id="p0">
+    <div class="head">
+      <div class="num">0</div>
+      <div class="titles"><h2>Orientation</h2><div class="sub">Know what GEMSTAR is before touching code · ~1–2 h</div></div>
+      <span class="donecount"></span><span class="chev">▾</span>
+    </div>
+    <div class="body">
+      <div class="chapter"><span class="ch">Chapter 0 · The Black Box</span><span class="beat">You're handed GEMSTAR and the authority's question. Before you can answer it, you need the <span class="arc">shape of the machine</span> — what the seven plugins are, and how data flows from a simulator to a sensor to a log.</span></div>
+      <h3 class="kicker">Goal</h3>
+      <p>Understand what GEMSTAR is and how its pieces relate. It is <strong>not a game</strong> — it's a set of
+      Unreal Engine plugins for sensor &amp; traffic simulation, glued together by one shared interfaces plugin,
+      configured by <code>.ini</code> files, communicating via <strong>OSI</strong> messages.</p>
+
+      <h3 class="kicker">Tasks</h3>
+      <ul class="tasks">
+        <li><input type="checkbox"><label>Read <a class="path" data-file="README.md" href="../README.md">README.md</a> end to end</label></li>
+        <li><input type="checkbox"><label>Open <a class="path" data-file="GEMSTAR_Architecture.drawio" href="../GEMSTAR_Architecture.drawio">GEMSTAR_Architecture.drawio</a> (drawio extension or app.diagrams.net)</label></li>
+        <li><input type="checkbox"><label>Skim the plugin list in <a class="path" data-file="GEMSTAR.uproject" href="../GEMSTAR.uproject">GEMSTAR.uproject</a> — 7 GameFeature plugins + GEMSTAR_Interfaces</label></li>
+        <li><input type="checkbox"><label>Study the data-flow diagram below until you can redraw it</label></li>
+      </ul>
+
+      <h3 class="kicker">Data flow (the whole system in one picture)</h3>
+<pre>esmini / SUMO ──vehicle state──▶ AEsminiManager / ASUMOManager
+                                       │ (IVehicleDataDispatcher)
+                                       ▼
+                                AVehicleManager ─▶ spawns/updates Chaos vehicles
+SUMO ──traffic lights──▶ (ITrafficLightDataDispatcher) ─▶ traffic light actors
+
+Camera / Lidar managers ─spawn sensors─▶ images / raycast point clouds
+                                       │ (ISensorDataUpdate)
+                       ┌───────────────┴───────────────┐
+                       ▼                                ▼
+                 ALogManager                     AVisualizerManager
+        (OSI GroundTruth + SensorView           (renders point cloud
+         → binary trace in Output/)              in the viewport)
+
+AGEMSTARRoot ─ orchestrates all managers via IGEMSTARManager + DefaultGemstar.ini</pre>
+
+      <div class="quiz" data-answer="1">
+        <div class="q">Which statement best describes GEMSTAR's architecture?</div>
+        <button class="opt">A single monolithic game module with everything inside.</button>
+        <button class="opt">Feature plugins that depend only on a shared interfaces plugin, never on each other.</button>
+        <button class="opt">Each plugin directly calls every other plugin's classes.</button>
+        <div class="fb"></div>
+      </div>
+
+      <details class="reveal"><summary>Checkpoint — reveal model answer</summary>
+        Simulators (esmini/SUMO) <em>produce</em> vehicle &amp; traffic-light data through dispatchers;
+        consumers (vehicle manager, logger, visualizer) <em>subscribe</em> via update interfaces. Sensors
+        (camera/lidar) produce sensor data that the logger writes as OSI traces and the visualizer renders.
+        <code>AGEMSTARRoot</code> reads <code>DefaultGemstar.ini</code> and wires it all together. Plugins
+        couple only to <code>gemstar_interfaces</code>.
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ PHASE 1 ============ -->
+  <section class="phase collapsed" data-id="p1">
+    <div class="head">
+      <div class="num">1</div>
+      <div class="titles"><h2>Unreal Editor Fundamentals</h2><div class="sub">You can't read the C++ until you know what it drives · ~4–6 h</div></div>
+      <span class="donecount"></span><span class="chev">▾</span>
+    </div>
+    <div class="body">
+      <div class="chapter"><span class="ch">Chapter 1 · Learning to See</span><span class="beat">You can't read a machine's mind before you've walked its world. Open the editor, place objects, press play — <span class="arc">learn what the C++ is actually driving</span> before you read a line of it.</span></div>
+      <h3 class="kicker">Concepts</h3>
+      <p>Actors · Components · Level/World · the game loop (<code>Tick</code>) · Blueprints · Content Browser ·
+      maps (<code>.umap</code>) · DataTables · Play-In-Editor (PIE) · Output Log · console (<code>~</code>).</p>
+      <h3 class="kicker">Resources</h3>
+      <ul class="tasks">
+        <li><input type="checkbox"><label>Epic — “Your First Hour in Unreal Engine” (dev.epicgames.com/learning)</label></li>
+        <li><input type="checkbox"><label>Epic — “Understanding the Basics” docs</label></li>
+      </ul>
+      <h3 class="kicker">▶ Watch</h3>
+      <a class="vid" target="_blank" rel="noopener" href="https://dev.epicgames.com/community/learning/courses/3ke/your-first-hour-in-unreal-engine-5-2">
+        <span class="play">▶</span>
+        <span class="meta"><b>Your First Hour in Unreal Engine</b><span>Epic's official hands-on video course — build a small game, learn the editor end to end. The single best practical starting point.</span></span>
+        <span class="src">Epic · course</span>
+      </a>
+      <h3 class="kicker">Exercises (in a scratch project, not GEMSTAR)</h3>
+      <a class="walk" href="exercises/phase1.html"><span class="arrow">▸</span> Open step-by-step walkthrough (3 exercises, full instructions)</a>
+      <ul class="tasks">
+        <li><input type="checkbox"><label>New empty Blueprint project; make a cube rotate via Blueprint</label></li>
+        <li><input type="checkbox"><label>Blueprint Actor that logs on <code>BeginPlay</code> and every <code>Tick</code></label></li>
+        <li><input type="checkbox"><label>Make a DataTable and read a row in Blueprint (vehicle feature uses this pattern)</label></li>
+      </ul>
+      <div class="quiz" data-answer="0">
+        <div class="q">An Actor vs a Component?</div>
+        <button class="opt">An Actor is placeable in a level; Components are attached to Actors to add behavior/data.</button>
+        <button class="opt">They're identical; the words are interchangeable.</button>
+        <button class="opt">A Component is placeable in a level; Actors only live inside Components.</button>
+        <div class="fb"></div>
+      </div>
+      <details class="reveal"><summary>Checkpoint — reveal</summary>
+        <code>BeginPlay</code> runs once when play starts (init); <code>Tick</code> runs every frame
+        (per-frame updates). Simulator managers step their sims in <code>Tick</code>.
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ PHASE 2 ============ -->
+  <section class="phase collapsed" data-id="p2">
+    <div class="head">
+      <div class="num">2</div>
+      <div class="titles"><h2>C++ in Unreal</h2><div class="sub">Where GEMSTAR lives · ~12–20 h (more if C++ is new to you)</div></div>
+      <span class="donecount"></span><span class="chev">▾</span>
+    </div>
+    <div class="body">
+      <div class="chapter"><span class="ch">Chapter 2 · The Contracts</span><span class="beat">GEMSTAR's parts are strangers to each other — they cooperate only through written <span class="arc">contracts</span> (interfaces). Learn the language those contracts are written in and you can read any of them.</span></div>
+      <h3 class="kicker">Concepts (UE-specific, not plain C++)</h3>
+      <p>Reflection macros <code>UCLASS / UPROPERTY / UFUNCTION / USTRUCT / UENUM</code> · garbage collection &amp;
+      <code>UObject</code> ownership · Actor lifecycle in C++ · <strong>UInterfaces</strong> (the central pattern here) ·
+      <strong>spawning &amp; casting</strong> (<code>SpawnActor</code>, <code>Cast&lt;&gt;</code>, <code>GetOwner</code>,
+      <code>UActorComponent</code> — the building blocks of GEMSTAR's loader pattern, exercised hands-on in Phase 3) ·
+      modules &amp; <code>.Build.cs</code>/<code>.Target.cs</code> · <code>UE_LOG</code> (5.7 validates format strings at compile time).</p>
+      <h3 class="kicker">Resources</h3>
+      <ul class="tasks">
+        <li><input type="checkbox"><label>Epic — “Programming with C++” + “Gameplay Architecture”</label></li>
+        <li><input type="checkbox"><label>Tom Looman's UE C++ material (intermediate)</label></li>
+      </ul>
+      <h3 class="kicker">▶ Watch</h3>
+      <a class="vid" target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=IaU2Hue-ApI">
+        <span class="play">▶</span>
+        <span class="meta"><b>The Unreal Engine Game Framework: From int main() to BeginPlay</b><span>Alex Forsythe. The clearest explanation of how UE's object/actor/world model actually fits together — exactly the mental model you need to read <code>AGEMSTARRoot</code> and the managers.</span></span>
+        <span class="src">YouTube</span>
+      </a>
+      <a class="vid" target="_blank" rel="noopener" href="https://tomlooman.com/unreal-engine-cpp-guide/">
+        <span class="play">▶</span>
+        <span class="meta"><b>Unreal Engine 5 C++ Complete Guide</b><span>Tom Looman. Free written+video reference covering pointers, interfaces, macros, delegates, modules — the exact constructs used throughout GEMSTAR.</span></span>
+        <span class="src">tomlooman.com</span>
+      </a>
+      <h3 class="kicker">Exercises (scratch project)</h3>
+      <a class="walk" href="exercises/phase2.html"><span class="arrow">▸</span> Open step-by-step walkthrough (with full C++ code)</a>
+      <ul class="tasks">
+        <li><input type="checkbox"><label>C++ <code>AActor</code> subclass with a <code>UPROPERTY(EditAnywhere)</code> float, editable in editor</label></li>
+        <li><input type="checkbox"><label>Define a <code>UINTERFACE</code>, implement it on an Actor, call it through the interface pointer</label></li>
+        <li><input type="checkbox"><label>Two modules where one depends on the other via <code>.Build.cs</code></label></li>
+      </ul>
+      <h3 class="kicker">Read GEMSTAR code (easy → hard)</h3>
+      <ul class="tasks">
+        <li><input type="checkbox"><label><a class="path" data-file="Source/GEMSTAR/GEMSTAR.Build.cs" href="../Source/GEMSTAR/GEMSTAR.Build.cs">GEMSTAR.Build.cs</a> + the near-empty game module (warm-up)</label></li>
+        <li><input type="checkbox"><label><a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/GEMSTARManager.h" href="../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/GEMSTARManager.h">GEMSTARManager.h</a> — the core <code>IGEMSTARManager</code> interface</label></li>
+        <li><input type="checkbox"><label><a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/GEMSTARRoot.h" href="../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/GEMSTARRoot.h">GEMSTARRoot.h</a> + <a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Private/GEMSTARRoot.cpp" href="../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Private/GEMSTARRoot.cpp">GEMSTARRoot.cpp</a> — the orchestrator</label></li>
+      </ul>
+      <div class="quiz" data-answer="2">
+        <div class="q">Why does GEMSTAR lean so heavily on UInterfaces?</div>
+        <button class="opt">Because UE forbids inheritance.</button>
+        <button class="opt">To make the code run faster at runtime.</button>
+        <button class="opt">To decouple plugins — managers talk through contracts, not concrete classes, so features stay independent.</button>
+        <div class="fb"></div>
+      </div>
+      <details class="reveal"><summary>Checkpoint — reveal</summary>
+        A UE interface (<code>UINTERFACE</code> + <code>I...</code> class) integrates with the reflection/Blueprint
+        system and can be implemented by <code>UObject</code>s and queried at runtime — unlike a plain C++ abstract
+        class. GEMSTAR uses them so a producer (e.g. <code>ASUMOManager</code>) only knows the
+        <code>IVehicleDataDispatcher</code> contract, never the consumer's concrete type.
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ PHASE 2.5 ============ -->
+  <section class="phase collapsed" data-id="p2b">
+    <div class="head">
+      <div class="num">2½</div>
+      <div class="titles"><h2>Linking Native Third-Party Libraries</h2><div class="sub">GEMSTAR's signature complexity — and why it builds on Windows but not (yet) on macOS/Linux · ~3–5 h</div></div>
+      <span class="donecount"></span><span class="chev">▾</span>
+    </div>
+    <div class="body">
+      <div class="chapter"><span class="ch">Chapter 2½ · The Foreign Engines</span><span class="beat">Two of the machine's most powerful parts aren't Unreal at all — esmini and SUMO are <span class="arc">foreign engines bolted on</span> through Build.cs. On Windows they're shipped and ready; on macOS/Linux they're the reason the machine won't fully start. Meet them here.</span></div>
+      <p>This is the part most UE tutorials never cover, yet it's central to GEMSTAR: linking <b>precompiled native
+      libraries</b> (esmini, SUMO, OSI, protobuf) into UE modules via <code>Build.cs</code>. On <b>Windows</b> the libs
+      ship in the repo and everything links; on <b>macOS/Linux</b> this is exactly where the build breaks — so understanding
+      it is the prerequisite to any port. Either way it's the same mechanism worth knowing.</p>
+
+      <h3 class="kicker">The four moving parts in a ThirdParty Build.cs</h3>
+      <table>
+        <tr><th>Call</th><th>What it does</th></tr>
+        <tr><td><code>PublicIncludePaths.Add(...)</code></td><td>Lets your C++ <code>#include</code> the library's headers (e.g. <code>esminiLib.hpp</code>, <code>osi3/*.pb.h</code>)</td></tr>
+        <tr><td><code>PublicAdditionalLibraries.Add(...)</code></td><td>Links the static lib (<code>.lib</code>/<code>.a</code>/<code>.dylib</code>) at build time — the actual symbols</td></tr>
+        <tr><td><code>RuntimeDependencies.Add(...)</code></td><td>Copies a runtime DLL (e.g. <code>esminiLib.dll</code>) next to the binary so it loads at run time</td></tr>
+        <tr><td><code>PublicDefinitions.Add(...)</code></td><td>Compile flags the lib needs — e.g. <code>GOOGLE_PROTOBUF_NO_RTTI</code> (protobuf clashes with UE's RTTI settings)</td></tr>
+      </table>
+
+      <div class="callout warn" style="border-left:3px solid var(--bad);background:var(--panel2);padding:9px 14px;border-radius:0 8px 8px 0;margin:12px 0">
+        <b>Why it builds on Windows but not macOS — see it for yourself.</b> Open the Build.cs files below. Every
+        third-party link sits inside <code>if (Target.Platform == UnrealTargetPlatform.Win64)</code> — so on <b>Windows</b>
+        the libs link and the project runs. The <code>Mac</code> branch is empty/commented and there are no
+        <code>.dylib</code>/<code>.a</code> Mac binaries in the repo, so on <b>macOS</b> the headers include but nothing
+        links → unresolved symbols. Not a five-minute bug; a porting task.
+      </div>
+
+      <h3 class="kicker">Tasks</h3>
+      <ul class="tasks">
+        <li><input type="checkbox"><label>Read <a class="path" data-file="Plugins/GameFeatures/ue_esmini_feature/Source/ue_esmini_featureRuntime/ue_esmini_featureRuntime.Build.cs" href="../Plugins/GameFeatures/ue_esmini_feature/Source/ue_esmini_featureRuntime/ue_esmini_featureRuntime.Build.cs">ue_esmini_featureRuntime.Build.cs</a> — find the include path, the <code>.lib</code> link, and the <code>RuntimeDependencies</code> DLL copy</label></li>
+        <li><input type="checkbox"><label>Read <a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/GEMSTAR_Interfaces.Build.cs" href="../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/GEMSTAR_Interfaces.Build.cs">GEMSTAR_Interfaces.Build.cs</a> — spot the OSI + protobuf links and <code>GOOGLE_PROTOBUF_NO_RTTI</code></label></li>
+        <li><input type="checkbox"><label>Confirm the <code>Win64</code> link vs the empty <code>Mac</code> branch in both — this is the exact build/no-build line</label></li>
+        <li><input type="checkbox"><label>Read Epic — “Third-Party Libraries” / “Integrating a third-party library into Unreal Engine” docs</label></li>
+        <li><input type="checkbox"><label>Sketch what a Mac port needs: Mac builds of esmini/SUMO/OSI/protobuf + a <code>Mac</code> branch linking the <code>.dylib</code>/<code>.a</code></label></li>
+      </ul>
+      <a class="walk" href="exercises/phase2b.html"><span class="arrow">▸</span> Open walkthrough (dissect the Build.cs files + scope the Mac port)</a>
+
+      <details class="reveal"><summary>Checkpoint — reveal</summary>
+        You can name the four roles (<code>PublicIncludePaths</code> = headers, <code>PublicAdditionalLibraries</code> =
+        link static lib, <code>RuntimeDependencies</code> = copy runtime DLL, <code>PublicDefinitions</code> = compile flags),
+        and explain in one sentence why GEMSTAR builds on Windows but not on macOS (third-party links are Win64-only and
+        no Mac binaries are shipped).
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ PHASE 3 ============ -->
+  <section class="phase collapsed" data-id="p3">
+    <div class="head">
+      <div class="num">3</div>
+      <div class="titles"><h2>The UE Systems GEMSTAR Is Built On</h2><div class="sub">Learn each because GEMSTAR uses it · ~5–8 h</div></div>
+      <span class="donecount"></span><span class="chev">▾</span>
+    </div>
+    <div class="body">
+      <div class="chapter"><span class="ch">Chapter 3 · Ignition</span><span class="beat">A feature sits dormant until something sparks it. Follow the <span class="arc">loader</span> that wakes each one — the small component that, on a single config flag, brings a sensor to life.</span></div>
+      <table>
+        <tr><th>System</th><th>Why it matters here</th></tr>
+        <tr><td>Plugins (<code>.uplugin</code>, load phases)</td><td>Every feature is a plugin (<code>ExplicitlyLoaded</code> GameFeature plugin) — this handles <em>loading</em> the code/content</td></tr>
+        <tr><td><b>Loader-component pattern</b> (<code>UActorComponent</code> + <code>SpawnActor</code> + <code>Cast&lt;&gt;</code>)</td><td><b>How GEMSTAR actually initializes a feature</b> — a <code>GEMSTAR_*_Loader</code> component on the Root spawns &amp; configures the manager. <em>Learn this — it's the real entry point.</em></td></tr>
+        <tr><td>Config / <code>.ini</code></td><td><code>DefaultGemstar.ini</code> + the Root's <code>Use*</code> bools decide which loaders spawn their manager</td></tr>
+        <tr><td>DataTables</td><td>Vehicle type → Blueprint mapping (vehicle feature)</td></tr>
+        <tr><td>Chaos Vehicles</td><td>Physics vehicles</td></tr>
+        <tr><td>Scene Capture / Render Targets</td><td>Camera image capture</td></tr>
+        <tr><td>Line traces / raycasts</td><td>Lidar point generation</td></tr>
+      </table>
+
+      <div class="note warn"><b>Important — don't be misled by the standard tutorials.</b> The idiomatic Unreal way to
+      initialize a Game Feature is a <code>UGameFeatureAction</code> attached to a <code>GameFeatureData</code> asset
+      (that's what the videos below teach). <b>GEMSTAR does NOT use that.</b> Instead each feature has a
+      <code>GEMSTAR_*_Loader</code> that is a plain <code>UActorComponent</code> on <code>BP_GEMSTAR_Root</code>; on
+      <code>BeginPlay</code> it casts the owner to <code>AGEMSTARRoot</code>, checks a <code>Use*</code> bool, and
+      <code>SpawnActor</code>s the manager. Learn the standard way for context, but the walkthrough teaches the pattern
+      GEMSTAR <em>actually</em> uses. (The “Standard vs GEMSTAR” subsection in the walkthrough lays them side by side.)</div>
+
+      <h3 class="kicker">Tasks</h3>
+      <ul class="tasks">
+        <li><input type="checkbox"><label>Read Epic — “Game Features and Modular Gameplay” (context: the <em>standard</em> approach)</label></li>
+        <li><input type="checkbox"><label>Read Epic — “Configuration Files” docs</label></li>
+        <li><input type="checkbox"><label>Open <a class="path" data-file="Config/DefaultGemstar.ini" href="../Config/DefaultGemstar.ini">DefaultGemstar.ini</a> and <a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Resources/GemstarLidarTest.ini" href="../Plugins/GameFeatures/ue_lidar_feature/Resources/GemstarLidarTest.ini">GemstarLidarTest.ini</a></label></li>
+        <li><input type="checkbox"><label>Read <a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/GEMSTAR_Lidar_Loader.cpp" href="../Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/GEMSTAR_Lidar_Loader.cpp">GEMSTAR_Lidar_Loader.cpp</a> — the <em>actual</em> loader pattern (<code>UActorComponent</code> → <code>Cast</code> → <code>SpawnActor</code> → <code>Configure</code>)</label></li>
+        <li><input type="checkbox"><label>Build a toy loader component that mirrors it (in the walkthrough)</label></li>
+      </ul>
+      <a class="walk" href="exercises/phase3.html"><span class="arrow">▸</span> Open step-by-step walkthrough (real loader pattern + standard-vs-GEMSTAR + config)</a>
+      <h3 class="kicker">▶ Watch</h3>
+      <a class="vid" target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=3PBnqC7TxvM">
+        <span class="play">▶</span>
+        <span class="meta"><b>Modular Game Features in UE5: plug ‘n play, the Unreal way</b><span>Epic's official overview of the GameFeature plugin system (used here for plugin <em>loading</em>). Note: it teaches GameFeatureActions for init — GEMSTAR uses a loader component instead.</span></span>
+        <span class="src">Epic · YouTube</span>
+      </a>
+      <a class="vid" target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=HgnkfFWoHwk">
+        <span class="play">▶</span>
+        <span class="meta"><b>Getting started with Modular Game Features in Unreal Engine 5</b><span>Short hands-on intro to the standard system — useful context for the “standard vs GEMSTAR” comparison in the walkthrough.</span></span>
+        <span class="src">YouTube</span>
+      </a>
+      <details class="reveal"><summary>Checkpoint — reveal</summary>
+        At startup, each enabled feature's <code>GEMSTAR_*_Loader</code> <b>component</b> on <code>BP_GEMSTAR_Root</code>
+        runs <code>BeginPlay</code>: it <code>Cast&lt;AGEMSTARRoot&gt;</code>s its owner, checks the matching <code>Use*</code>
+        bool (e.g. <code>UseLidar</code>), and if true <code>SpawnActor</code>s the manager and calls
+        <code>RegisterManagerAndGetConfiguration</code> + <code>Configure</code>. The GameFeature plugin system only
+        <em>loaded</em> the plugin; this component does the wiring. (Not a <code>UGameFeatureAction</code>.)
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ PHASE 4 ============ -->
+  <section class="phase collapsed" data-id="p4">
+    <div class="head">
+      <div class="num">4</div>
+      <div class="titles"><h2>Guided Code Read — Lidar → Visualizer</h2><div class="sub">One full path = the architecture in miniature · ~3–5 h</div></div>
+      <span class="donecount"></span><span class="chev">▾</span>
+    </div>
+    <div class="body">
+      <div class="chapter"><span class="ch">Chapter 4 · Following the Beam</span><span class="beat">The payoff. Trace one lidar ray from a number in a config file to a glowing dot on screen — <span class="arc">your pedestrian-detection scenario in miniature</span>, the exact path the assignment runs on.</span></div>
+      <p>This single trace touches Actors, interfaces, dispatchers, config, and the OSI flow. Mac-friendly: you can
+      do it as a paper trace even without a working build.</p>
+<pre>GemstarLidarTest.ini      (config: rays, FOV, range, mounting)
+      │
+      ▼
+AGEMSTARRoot              reads config, registers managers
+      │ (IGEMSTARManager)
+      ▼
+ALidarSensorManager       spawns sensors from FSensorConfigData
+      │
+      ▼
+SimpleLidar               raycasts → point cloud
+      │ (ISensorDataUpdate dispatcher)
+      ▼
+AVisualizerManager → PointCloudVisualizer   renders points</pre>
+      <h3 class="kicker">Read, in order</h3>
+      <ul class="tasks">
+        <li><input type="checkbox"><label><a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Resources/GemstarLidarTest.ini" href="../Plugins/GameFeatures/ue_lidar_feature/Resources/GemstarLidarTest.ini">GemstarLidarTest.ini</a> — the inputs</label></li>
+        <li><input type="checkbox"><label><a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Public/LidarSensorManager.h" href="../Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Public/LidarSensorManager.h">LidarSensorManager.h</a> / <a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/LidarSensorManager.cpp" href="../Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/LidarSensorManager.cpp">.cpp</a> — config parse + spawn</label></li>
+        <li><input type="checkbox"><label><a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Public/SimpleLidar.h" href="../Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Public/SimpleLidar.h">SimpleLidar.h</a> / <a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/SimpleLidar.cpp" href="../Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/SimpleLidar.cpp">.cpp</a> — the raycasting sensor</label></li>
+        <li><input type="checkbox"><label><a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/SensorDataDispatcher.h" href="../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/SensorDataDispatcher.h">SensorDataDispatcher.h</a> + <a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/SensorDataUpdate.h" href="../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/SensorDataUpdate.h">SensorDataUpdate.h</a> — the pub-sub link</label></li>
+        <li><input type="checkbox"><label><a class="path" data-file="Plugins/GameFeatures/ue_visualizer_feature/Source/ue_visualizer_featureRuntime/Public/VisualizerManager.h" href="../Plugins/GameFeatures/ue_visualizer_feature/Source/ue_visualizer_featureRuntime/Public/VisualizerManager.h">VisualizerManager.h</a> + <a class="path" data-file="Plugins/GameFeatures/ue_visualizer_feature/Source/ue_visualizer_featureRuntime/Public/PointCloudVisualizer.h" href="../Plugins/GameFeatures/ue_visualizer_feature/Source/ue_visualizer_featureRuntime/Public/PointCloudVisualizer.h">PointCloudVisualizer.h</a></label></li>
+        <li><input type="checkbox"><label>Annotate each file: what data enters, what leaves</label></li>
+      </ul>
+      <a class="walk" href="exercises/phase4.html"><span class="arrow">▸</span> Open guided code-read worksheet (6 stations + predict/check)</a>
+
+      <div class="note"><b>Shortcut into the code:</b> each feature ships a <code>*Tester</code> / <code>*Mockup</code> class
+      (e.g. <a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Public/LidarSensorTester.h" href="../Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Public/LidarSensorTester.h">LidarSensorTester.h</a>,
+      <a class="path" data-file="Plugins/GameFeatures/ue_logger_feature/Source/ue_logger_featureRuntime/Public/SensorSpawnerMockup.h" href="../Plugins/GameFeatures/ue_logger_feature/Source/ue_logger_featureRuntime/Public/SensorSpawnerMockup.h">SensorSpawnerMockup.h</a>)
+      that implement the dispatcher/update interfaces directly. They're the easiest standalone way to see one side of the
+      pub-sub in isolation — read one alongside the trace.</div>
+
+      <h3 class="kicker">Then trace these yourself (same shape, different producer/consumer)</h3>
+      <ul class="tasks">
+        <li><input type="checkbox"><label><b>Camera path:</b> <a class="path" data-file="Plugins/GameFeatures/ue_camera_feature/Source/ue_camera_featureRuntime/Public/CameraSensorManager.h" href="../Plugins/GameFeatures/ue_camera_feature/Source/ue_camera_featureRuntime/Public/CameraSensorManager.h">CameraSensorManager.h</a> → <a class="path" data-file="Plugins/GameFeatures/ue_camera_feature/Source/ue_camera_featureRuntime/Public/CameraSensor.h" href="../Plugins/GameFeatures/ue_camera_feature/Source/ue_camera_featureRuntime/Public/CameraSensor.h">CameraSensor.h</a> — SceneCapture → RenderTarget instead of raycasts</label></li>
+        <li><input type="checkbox"><label><b>Vehicle path:</b> <a class="path" data-file="Plugins/GameFeatures/ue_vehicle_feature/Source/ue_vehicle_featureRuntime/Public/VehicleManager.h" href="../Plugins/GameFeatures/ue_vehicle_feature/Source/ue_vehicle_featureRuntime/Public/VehicleManager.h">VehicleManager.h</a> + <a class="path" data-file="Plugins/GameFeatures/ue_vehicle_feature/Source/ue_vehicle_featureRuntime/Public/VehicleTableRow.h" href="../Plugins/GameFeatures/ue_vehicle_feature/Source/ue_vehicle_featureRuntime/Public/VehicleTableRow.h">VehicleTableRow.h</a> — DataTable lookup → <code>SpawnActor</code> a Chaos vehicle; it <em>consumes</em> <code>IVehicleDataUpdate</code> from a simulator</label></li>
+      </ul>
+
+      <div class="quiz" data-answer="1">
+        <div class="q">How does <code>SimpleLidar</code>'s point cloud reach the visualizer?</div>
+        <button class="opt">The visualizer directly calls a method on the lidar class.</button>
+        <button class="opt">Via the <code>ISensorDataUpdate</code> dispatcher — the visualizer subscribed as a receiver.</button>
+        <button class="opt">It's written to a file the visualizer polls.</button>
+        <div class="fb"></div>
+      </div>
+      <div class="note">No video for this phase — it's a read of <em>this</em> repo's code, which no external tutorial covers. The hands-on practice <em>is</em> the guided trace above. Phase 2's “int main() to BeginPlay” video is the best companion if the actor/lifecycle parts feel unclear.</div>
+      <details class="reveal"><summary>Checkpoint — reveal</summary>
+        You should be able to draw the diagram above from memory and name the exact class/file at each arrow:
+        ini → <code>AGEMSTARRoot</code> → <code>ALidarSensorManager</code> → <code>SimpleLidar</code> →
+        <code>SensorDataDispatcher</code>/<code>ISensorDataUpdate</code> → <code>AVisualizerManager</code> →
+        <code>PointCloudVisualizer</code>.
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ PHASE 5 ============ -->
+  <section class="phase collapsed" data-id="p5">
+    <div class="head">
+      <div class="num">5</div>
+      <div class="titles"><h2>The Domain — OSI, esmini, SUMO, Sensor Sim</h2><div class="sub">What makes GEMSTAR a simulation tool · ~4–7 h (parallelizable)</div></div>
+      <span class="donecount"></span><span class="chev">▾</span>
+    </div>
+    <div class="body">
+      <div class="chapter"><span class="ch">Chapter 5 · The Common Tongue</span><span class="beat">A detection only matters if the outside world can hear it. GEMSTAR speaks <span class="arc">OSI</span> — the shared language of simulation. Learn how it translates a ray into a message any tool can read.</span></div>
+      <h3 class="kicker">Tasks</h3>
+      <ul class="tasks">
+        <li><input type="checkbox"><label><strong>OSI</strong>: skim docs; understand <code>GroundTruth</code>, <code>SensorView</code>, <code>SensorData</code>, <code>TrafficUpdate</code></label></li>
+        <li><input type="checkbox"><label>Browse the message headers in <a class="path" data-file="Plugins/gemstar_interfaces/ThirdParty/osi3/include/osi3/osi_sensorview.pb.h" href="../Plugins/gemstar_interfaces/ThirdParty/osi3/include/osi3/osi_sensorview.pb.h">osi_sensorview.pb.h</a>, <a class="path" data-file="Plugins/gemstar_interfaces/ThirdParty/osi3/include/osi3/osi_groundtruth.pb.h" href="../Plugins/gemstar_interfaces/ThirdParty/osi3/include/osi3/osi_groundtruth.pb.h">osi_groundtruth.pb.h</a></label></li>
+        <li><input type="checkbox"><label>Read <a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/Utils/ToOSI.h" href="../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/Utils/ToOSI.h">ToOSI.h</a> / <a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Private/Utils/ToOSI.cpp" href="../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Private/Utils/ToOSI.cpp">ToOSI.cpp</a> — the UE→OSI bridge (heart of the integration)</label></li>
+        <li><input type="checkbox"><label><strong>Protobuf</strong>: short intro (messages, fields, serialization). <code>.pb.h</code> are generated.</label></li>
+        <li><input type="checkbox"><label><strong>esmini</strong>: what are <code>.xosc</code> (scenario) &amp; <code>.xodr</code> (road) files</label></li>
+        <li><input type="checkbox"><label><strong>SUMO</strong>: the <code>libsumo</code> API concept (vehicles + lights stepped each tick)</label></li>
+        <li><input type="checkbox"><label>Domain: co-simulation, ODD/ODD validation, lidar/camera/radar modeling</label></li>
+      </ul>
+      <a class="walk" href="exercises/phase5.html"><span class="arrow">▸</span> Open OSI / domain worksheet (4 read-and-inspect exercises)</a>
+      <h3 class="kicker">▶ Watch — these tools are easiest to grasp in motion</h3>
+      <a class="vid" target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=0YmUlLM8III">
+        <span class="play">▶</span>
+        <span class="meta"><b>Introduction to ASAM OSI</b><span>What OSI is and how it carries data between models in a co-simulation — the standard every GEMSTAR message serializes to.</span></span>
+        <span class="src">YouTube</span>
+      </a>
+      <a class="vid" target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=v8WMqEM2U74">
+        <span class="play">▶</span>
+        <span class="meta"><b>ASAM OSI trace file</b><span>Directly relevant: GEMSTAR's logger writes OSI trace files to <code>Output/</code>. This shows what they are and how they're read back.</span></span>
+        <span class="src">YouTube</span>
+      </a>
+      <a class="vid" target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=pDUVFuMyR5o">
+        <span class="play">▶</span>
+        <span class="meta"><b>OpenDRIVE Visualization with esmini</b><span>See esmini play OpenDRIVE/OpenSCENARIO — the scenario engine behind <code>ue_esmini_feature</code>.</span></span>
+        <span class="src">YouTube</span>
+      </a>
+      <a class="vid" target="_blank" rel="noopener" href="https://www.youtube.com/playlist?list=PLAk8GOoajG6tKI74YID0hwjXVg8KBxNAD">
+        <span class="play">▶</span>
+        <span class="meta"><b>SUMO Traffic Simulator — tutorial playlist</b><span>Install SUMO, build a network, run traffic. The simulator behind <code>ue_sumo_feature</code> (start with Part 1).</span></span>
+        <span class="src">YouTube · playlist</span>
+      </a>
+      <details class="reveal"><summary>Checkpoint — reveal</summary>
+        An OSI <code>SensorView</code> carries the (optionally filtered) ground-truth world from a sensor's
+        viewpoint plus its mounting/configuration. <code>ToOSI</code> builds OSI messages from UE transforms/actors
+        (e.g. <code>toOSIBaseMoving</code>, <code>toMountingPosition</code>).
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ PHASE 6 ============ -->
+  <section class="phase collapsed" data-id="p6">
+    <div class="head">
+      <div class="num">6</div>
+      <div class="titles"><h2>Make a Change</h2><div class="sub">From reader to contributor · ongoing</div></div>
+      <span class="donecount"></span><span class="chev">▾</span>
+    </div>
+    <div class="body">
+      <div class="chapter"><span class="ch">Chapter 6 · Your Mark</span><span class="beat">The authority's question was about a sensor parameter — one you can now add. Make the change, watch it alter what the shuttle "sees." <span class="arc">You're no longer reading the machine; you're changing it.</span> Assignment complete.</span></div>
+      <a class="walk" href="exercises/phase6.html"><span class="arrow">▸</span> Open step-by-step walkthrough (4 real GEMSTAR changes)</a>
+      <ul class="tasks">
+        <li><input type="checkbox"><label>Add a config key to a sensor <code>.ini</code> and consume it in the manager (smallest real change)</label></li>
+        <li><input type="checkbox"><label>Add <code>UE_LOG</code> traces through the lidar→visualizer path; watch data move</label></li>
+        <li><input type="checkbox"><label>Add a small field to a <code>ToOSI</code> conversion and log it from the logger</label></li>
+        <li><input type="checkbox"><label>(Advanced) Sketch a new sensor feature plugin mirroring <code>ue_lidar_feature</code></label></li>
+      </ul>
+      <details class="reveal"><summary>Checkpoint — reveal</summary>
+        Before writing code you can name which files a given feature change touches and why — config →
+        manager → sensor → dispatcher → consumer.
+      </details>
+    </div>
+  </section>
+
+  <div class="note">
+    <strong>Platform reality — does it build &amp; run?</strong> The <em>learning</em> in every phase is identical on
+    all platforms; only whether the full project compiles differs.
+    <table style="margin-top:8px">
+      <tr><th>Platform</th><th>Builds &amp; runs?</th><th>Toolchain / notes</th></tr>
+      <tr><td><b>Windows</b> (the documented platform)</td><td>✅ <b>Everything</b> — incl. esmini &amp; SUMO</td><td>VS 2022 · <code>PostGitPull_ReGenVSFiles.bat</code> → <code>GEMSTAR.sln</code>. The Win64 libs ship in the repo. This is the smoothest path.</td></tr>
+      <tr><td><b>macOS</b></td><td>⚠️ Pure-UE features only (lidar, visualizer, vehicle, camera)</td><td>Xcode · <code>PostGitPull_ReGenXcodeFiles.command</code> → <code>.xcworkspace</code>. esmini/SUMO/OSI/protobuf ship <b>Windows-only</b> binaries (no <code>.dylib</code>) — those features need a port (Phase 2.5).</td></tr>
+      <tr><td><b>Linux</b></td><td>⚠️ Partial</td><td>Some libs ship a <code>.a</code> (e.g. esmini); OSI/SUMO branches are incomplete.</td></tr>
+    </table>
+    <span style="color:var(--muted);font-size:13px">On <b>Windows</b>, ignore the "do it as a paper trace" notes — you can build and run for real. On <b>macOS</b> (e.g. an Intel Mac with a UE source build), stick to the lidar/visualizer path or take on the Phase 2.5 port.</span>
+  </div>
+
+  <div class="story">
+    <div class="label">Epilogue · The answer</div>
+    <p>Six chapters ago GEMSTAR was a black box and the authority's question was someone else's problem. Now you can
+    place <code>BP_GEMSTAR_Root</code> in a map, point a lidar at a curb in a config file, trace the ray that hits the
+    pedestrian, read the OSI message it produces — and change the one parameter that decides whether the shuttle sees
+    them in time.</p>
+    <p class="q">That's the whole job: turning "will it see the pedestrian?" from a guess into something you can run, read, and adjust. The machine isn't a black box anymore — it's a tool in your hands.</p>
+  </div>
+
+  <footer>Companion to <span class="path">learning-guide/LEARNING_PLAN.md</span> · progress stored locally in your browser</footer>
+</div>
+
+<script>
+(function(){
+  var KEY = "gemstar-learn-v1";
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e){ state = {}; }
+
+  // Assign stable ids to every task checkbox
+  var boxes = [];
+  document.querySelectorAll(".phase").forEach(function(ph){
+    var pid = ph.getAttribute("data-id");
+    ph.querySelectorAll("ul.tasks input[type=checkbox]").forEach(function(cb, i){
+      var id = pid + "-" + i;
+      cb.dataset.id = id;
+      boxes.push(cb);
+      if (state[id]) { cb.checked = true; cb.closest("li").classList.add("checked"); }
+      cb.addEventListener("change", function(){
+        state[id] = cb.checked;
+        cb.closest("li").classList.toggle("checked", cb.checked);
+        save(); refresh();
+      });
+    });
+  });
+
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+  function refresh(){
+    var total = boxes.length, done = boxes.filter(function(b){return b.checked;}).length;
+    document.getElementById("barfill").style.width = total ? (100*done/total)+"%" : "0%";
+    document.getElementById("pct").textContent = done + " / " + total;
+    document.querySelectorAll(".phase").forEach(function(ph){
+      var cbs = Array.prototype.slice.call(ph.querySelectorAll("ul.tasks input[type=checkbox]"));
+      var d = cbs.filter(function(b){return b.checked;}).length;
+      ph.querySelector(".donecount").textContent = cbs.length ? (d+"/"+cbs.length) : "";
+      ph.classList.toggle("done", cbs.length>0 && d===cbs.length);
+    });
+  }
+
+  // Collapse / expand phases
+  document.querySelectorAll(".phase > .head").forEach(function(h){
+    h.addEventListener("click", function(e){
+      if (e.target.tagName === "A") return;
+      h.parentElement.classList.toggle("collapsed");
+    });
+  });
+
+  // Expand all / Collapse all
+  var phases = document.querySelectorAll(".phase");
+  var toggleAllBtn = document.getElementById("toggleAllBtn");
+  function syncToggleLabel(){
+    var anyCollapsed = Array.prototype.some.call(phases, function(p){ return p.classList.contains("collapsed"); });
+    toggleAllBtn.textContent = anyCollapsed ? "Expand all" : "Collapse all";
+  }
+  toggleAllBtn.addEventListener("click", function(){
+    var anyCollapsed = Array.prototype.some.call(phases, function(p){ return p.classList.contains("collapsed"); });
+    phases.forEach(function(p){ p.classList.toggle("collapsed", !anyCollapsed); });
+    syncToggleLabel();
+  });
+  document.querySelectorAll(".phase > .head").forEach(function(h){
+    h.addEventListener("click", syncToggleLabel);
+  });
+  syncToggleLabel();
+
+  // Quizzes
+  document.querySelectorAll(".quiz").forEach(function(q){
+    var answer = parseInt(q.getAttribute("data-answer"),10);
+    var opts = q.querySelectorAll(".opt");
+    var fb = q.querySelector(".fb");
+    opts.forEach(function(opt, i){
+      opt.addEventListener("click", function(){
+        opts.forEach(function(o){ o.classList.remove("correct","wrong"); });
+        if (i === answer){ opt.classList.add("correct"); fb.textContent="✓ Correct."; fb.className="fb ok"; }
+        else { opt.classList.add("wrong"); opts[answer].classList.add("correct");
+               fb.textContent="✗ Not quite — the highlighted option is right."; fb.className="fb no"; }
+      });
+    });
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", function(){
+    if (!confirm("Reset all progress?")) return;
+    state = {}; save();
+    boxes.forEach(function(b){ b.checked=false; b.closest("li").classList.remove("checked"); });
+    refresh();
+  });
+
+  refresh();
+
+  // Cross-platform link upgrade — derive the repo root from this page's own location so the
+  // vscode://file links resolve on macOS (/Volumes/…), Windows (/C:/…), or any clone path.
+  // Falls back to the relative href in the markup when not opened as a local file.
+  (function(){
+    try {
+      if (location.protocol !== "file:") return;
+      var marker = "/learning-guide/";
+      var path = decodeURIComponent(location.pathname);
+      var i = path.indexOf(marker);
+      if (i === -1) return;
+      var root = path.slice(0, i);
+      document.querySelectorAll("a.path[data-file]").forEach(function(a){
+        a.setAttribute("href", "vscode://file" + root + "/" + a.getAttribute("data-file"));
+      });
+    } catch (e) {}
+  })();
+})();
+</script>
+</body>
+</html>

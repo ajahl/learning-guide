@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 2.5 Exercises · Linking Native Libraries</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-key="phase2b">
+<header class="hero">
+  <div class="crumb"><a href="../learning-guide.html">← Interactive Learning Guide</a> · Phase 2.5</div>
+  <h1>Phase 2.5 — Linking Native Third-Party Libraries: Worksheet</h1>
+  <p>How GEMSTAR pulls esmini, SUMO, OSI &amp; protobuf into Unreal via <code>Build.cs</code> — why it builds on <b>Windows</b>
+  and what a <b>macOS/Linux</b> port would take. Mostly reading; doable on any OS.</p>
+</header>
+<div class="progressbar"><div class="inner">
+  <strong style="font-size:13px">Steps done</strong>
+  <div class="bar"><span id="bar"></span></div><span class="pct" id="pct">0 / 0</span>
+</div></div>
+
+<div class="wrap">
+
+  <div class="callout arc"><span class="lab">↪ The assignment</span><em>The obstacle from the story, up close: the foreign engines (esmini/SUMO) are shipped and ready on Windows — and are exactly why the machine won't fully start on macOS/Linux. Learn the wiring and the wall stops being a mystery.</em></div>
+
+  <div class="callout note"><b>Why this phase exists:</b> the architecture (Phases 0–4) is the "what." This is the "how it
+  physically builds." Sensor-sim projects live or die on native-library integration, and it's the single thing standing
+  between you and a Mac build — so it deserves its own pass.</div>
+
+  <!-- EX 1 -->
+  <h2 class="ex">Exercise 1 — Dissect a ThirdParty Build.cs (esmini)</h2>
+  <div class="goalrow"><span class="chip lvl">Intermediate</span><span class="chip time">~40 min</span>
+    <span class="chip">Skills: PublicIncludePaths, PublicAdditionalLibraries, RuntimeDependencies, platform branches</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Identify the four jobs a Build.cs does to wire in a precompiled library.</p>
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <a class="path" data-file="Plugins/GameFeatures/ue_esmini_feature/Source/ue_esmini_featureRuntime/ue_esmini_featureRuntime.Build.cs" href="../../Plugins/GameFeatures/ue_esmini_feature/Source/ue_esmini_featureRuntime/ue_esmini_featureRuntime.Build.cs">ue_esmini_featureRuntime.Build.cs</a>. Find where it builds the paths to <code>ThirdParty/esmini/{Include,Lib}</code>.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Headers:</b> find <code>PrivateIncludePaths</code> adding the esmini <code>Include</code> folder — that's what lets the C++ <code>#include "esminiLib.hpp"</code>.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Link:</b> find <code>PublicAdditionalLibraries.Add(... "esminiLib.lib")</code> — this links the symbols at build time.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Runtime:</b> find <code>RuntimeDependencies.Add(...)</code> copying <code>esminiLib.dll</code> / <code>esminiRMLib.dll</code> into <code>$(PluginDir)/Binaries/Win64</code> — without this the DLL isn't found at run time.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Platform gate:</b> note all of that lives inside <code>if (Target.Platform == UnrealTargetPlatform.Win64)</code>. The <code>Linux</code> branch links a <code>.a</code>; there is <b>no Mac branch</b>.</span></label></li>
+    </ol>
+    <div class="expect">You can point at one line for each of: include path, static-lib link, runtime DLL copy. And you can see the
+    Win64-only gate with your own eyes.</div>
+    <details class="tshoot"><summary>Why three different mechanisms?</summary>
+      <table>
+        <tr><td><b>Include path</b></td><td>Compile-time: so headers resolve. No code linked yet.</td></tr>
+        <tr><td><b>AdditionalLibraries</b></td><td>Link-time: resolves the symbols your code calls (static <code>.lib</code>/<code>.a</code>).</td></tr>
+        <tr><td><b>RuntimeDependencies</b></td><td>Run-time: ships the <code>.dll</code> so the OS can load it when the game runs. A static link alone isn't enough when the lib is a DLL.</td></tr>
+      </table>
+    </details>
+    <div class="selfcheck">If you linked the <code>.lib</code> but forgot <code>RuntimeDependencies</code>, when would it fail — build or launch? (Launch: "DLL not found." The build succeeds.)</div>
+  </div>
+
+  <!-- EX 2 -->
+  <h2 class="ex">Exercise 2 — OSI + protobuf in the interfaces module</h2>
+  <div class="goalrow"><span class="chip lvl">Intermediate</span><span class="chip time">~30 min</span>
+    <span class="chip">Skills: static libs, compile definitions, the RTTI gotcha</span></div>
+  <div class="card">
+    <p><b>Objective:</b> See the same pattern for the libraries at the heart of GEMSTAR — and one UE-specific gotcha.</p>
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/GEMSTAR_Interfaces.Build.cs" href="../../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/GEMSTAR_Interfaces.Build.cs">GEMSTAR_Interfaces.Build.cs</a>. Find the two include paths added publicly: <code>osi3</code> and protobuf.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Find the Win64 links: <code>open_simulation_interface_static.lib</code> and <code>libprotobuf.lib</code>.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Find <code>PublicDefinitions.Add("GOOGLE_PROTOBUF_NO_RTTI")</code>. <b>Predict why</b> before reading the explanation.</span></label></li>
+    </ol>
+    <details class="tshoot"><summary>The GOOGLE_PROTOBUF_NO_RTTI gotcha</summary>
+      Unreal typically builds with C++ RTTI disabled. Protobuf can use RTTI by default; if its headers and UE disagree
+      about RTTI you get ODR/link errors or crashes. Defining <code>GOOGLE_PROTOBUF_NO_RTTI</code> tells protobuf to match
+      UE. This is a classic "integrating a mature C++ lib into UE" adjustment — exactly the kind of thing a Mac port must
+      also get right.
+    </details>
+    <div class="selfcheck">Because these links are <code>Public</code>, who else can use OSI types? (Every module that depends on
+    <code>GEMSTAR_Interfaces</code> — i.e. all the features. That's why the OSI headers "just work" in the loggers/managers.)</div>
+  </div>
+
+  <!-- EX 3 -->
+  <h2 class="ex">Exercise 3 — Scope the macOS port</h2>
+  <div class="goalrow"><span class="chip lvl">Advanced</span><span class="chip time">~30 min (design)</span>
+    <span class="chip">Skills: cross-platform porting, honest scoping</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Turn "it builds on Windows but not macOS/Linux" into a concrete, sized task list. (You don't have to do the port — just scope it accurately. Skip this exercise if you're on Windows and just want it running.)</p>
+    <h3 class="kicker">Checklist — what a macOS build actually needs</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Binaries:</b> obtain or build macOS versions (<code>.dylib</code> or <code>.a</code>) of: OSI (<code>open_simulation_interface</code>), protobuf, esmini, SUMO/libsumo. None ship in this repo.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Architecture:</b> they must match your target — Intel Macs need <b>x86_64</b>, Apple Silicon needs <b>arm64</b> (or a universal binary). Mismatched arch = link failure.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Build.cs Mac branch:</b> add <code>else if (Target.Platform == UnrealTargetPlatform.Mac)</code> to each ThirdParty Build.cs, linking the Mac libs + (for dylibs) <code>RuntimeDependencies</code> + possibly <code>PublicDelayLoadDLLs</code>-equivalent handling.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Headers:</b> confirm the existing include paths are platform-agnostic (they usually are) — only the lib links change per platform.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>protobuf/UE friction:</b> re-verify the RTTI define and that the protobuf version matches the one the OSI lib was generated against.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>5.7 API drift:</b> separately from libs, the C++ may need 5.3→5.7 fixes (Phase 2's strict settings). Tackle after linking works.</span></label></li>
+    </ol>
+    <div class="callout warn"><b>Honest verdict:</b> this is a real porting project (days, not minutes), gated mostly on obtaining
+    macOS builds of esmini/SUMO/OSI. If you just want GEMSTAR running, <b>Windows</b> needs none of this. On Mac, the
+    no-port learning path is the <b>lidar/visualizer</b> features, which use only UE built-ins.</div>
+    <div class="selfcheck">In one sentence to a colleague: why does GEMSTAR build on Windows but not macOS, and what's the smallest first step toward a Mac build? (Third-party links are Win64-only with no Mac binaries shipped; first step is obtaining/​building the macOS libs for the right arch and adding a Mac branch to each ThirdParty Build.cs.)</div>
+  </div>
+
+  <a class="backlink" href="../learning-guide.html">← Back to the main guide</a>
+  <footer>Phase 2.5 worksheet · progress saved locally</footer>
+</div>
+<script src="steps.js"></script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 1 Exercises · Editor Fundamentals</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-key="phase1">
+<header class="hero">
+  <div class="crumb"><a href="../learning-guide.html">← Interactive Learning Guide</a> · Phase 1</div>
+  <h1>Phase 1 — Editor Fundamentals: Exercises</h1>
+  <p>Do these in a throwaway <strong>Blueprint</strong> project (not GEMSTAR). Goal: be fluent in the editor before reading C++.</p>
+</header>
+<div class="progressbar"><div class="inner">
+  <strong style="font-size:13px">Steps done</strong>
+  <div class="bar"><span id="bar"></span></div><span class="pct" id="pct">0 / 0</span>
+</div></div>
+
+<div class="wrap">
+
+  <div class="callout arc"><span class="lab">↪ The assignment</span><em>Before the shuttle can detect a pedestrian, you have to be able to place an object in a world and press play. This chapter is exactly that — learning to see what the engine sees.</em></div>
+
+  <div class="callout note"><b>One-time setup:</b> Launch Unreal Editor —
+  <b>Windows:</b> from the Epic Launcher, or <code>Engine\Binaries\Win64\UnrealEditor.exe</code> of a source build;
+  <b>macOS:</b> <code>…/Engine/Binaries/Mac/UnrealEditor.app</code>.
+  In the Project Browser → <b>Games → Blank</b>, <b>Blueprint</b> (not C++), Desktop, no starter content needed.
+  Name it <code>UEScratch</code>. This is your sandbox for Phases 1–3.</div>
+
+  <div class="callout note"><b>Two words you'll keep meeting:</b> an <b>Actor</b> is a thing placed in the level (a vehicle, a
+  sensor, the GEMSTAR Root). A <b>Component</b> attaches <em>to</em> an Actor to add behavior or data (a mesh, a camera —
+  or GEMSTAR's <code>GEMSTAR_*_Loader</code>, which is a component on the Root). Actor = the object; Component = a part
+  bolted onto it. You'll build both; the loader pattern in Phase 3 is component-based.</div>
+
+  <!-- EX 1 -->
+  <h2 class="ex">Exercise 1 — A cube that rotates</h2>
+  <div class="goalrow"><span class="chip lvl">Beginner</span><span class="chip time">~20 min</span>
+    <span class="chip">Skills: Actors, Blueprints, Tick, viewport</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Place an object in the level and drive it with a Blueprint that runs every frame.</p>
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">In the main viewport, click <b>Add (+) → Shapes → Cube</b>. It appears at the world origin. Press <code>F</code> with it selected to focus the camera on it.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">In the <b>Outliner</b> (right), the cube is a <code>StaticMeshActor</code>. Select it; the <b>Details</b> panel shows its Transform. This is an <b>Actor</b> — a thing placeable in the level.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">We want our own Actor type. In the <b>Content Browser</b>: <b>Add (+) → Blueprint Class → Actor</b>. Name it <code>BP_Spinner</code>. Double-click to open the Blueprint editor.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">In the Blueprint's <b>Components</b> panel: <b>Add → Cube</b> (a Static Mesh component). Now the Blueprint carries its own visible mesh.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Switch to the <b>Event Graph</b> tab. You'll see <code>Event BeginPlay</code> and <code>Event Tick</code> nodes. From <b>Event Tick</b>'s exec pin (white arrow), drag out and add <b>AddActorLocalRotation</b>.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">On the <b>Delta Rotation</b> pin, set <b>Yaw = 2.0</b>. <b>Compile</b> (top-left) and <b>Save</b>.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Drag <code>BP_Spinner</code> from the Content Browser into the viewport. Delete the original plain cube. Press <b>Play</b> (▶, or <code>Alt+P</code>).</span></label></li>
+    </ol>
+    <div class="expect">The cube spins continuously around its vertical axis. Stop play and it returns to rest — Tick only runs during play.</div>
+    <div class="callout tip"><b>Why Yaw = 2.0 and not a "speed"?</b> You're adding 2° <em>per frame</em>, so the speed depends on framerate. The proper fix — multiply by <b>Delta Seconds</b> (the Tick node's output) — is Exercise 2 of Phase 2 in spirit. Note that thought now.</div>
+    <details class="tshoot"><summary>Troubleshooting</summary>
+      <table>
+        <tr><td><b>Cube invisible after dragging in</b></td><td>You added the component to the Blueprint but its mesh slot may be empty — select the Cube component, in Details set <b>Static Mesh = Cube</b>.</td></tr>
+        <tr><td><b>Nothing rotates</b></td><td>Did you wire <b>Event Tick</b> (not BeginPlay)? Did you Compile after editing?</td></tr>
+        <tr><td><b>Can't find AddActorLocalRotation</b></td><td>Uncheck "Context Sensitive" in the node search, or drag from the Tick exec pin specifically.</td></tr>
+      </table>
+    </details>
+    <div class="selfcheck">Explain out loud: what is the difference between the <em>StaticMeshActor</em> you first placed and your <em>BP_Spinner</em> Blueprint class? (Answer: BP_Spinner is a reusable class/blueprint with behavior; the StaticMeshActor was a bare instance.)</div>
+  </div>
+
+  <!-- EX 2 -->
+  <h2 class="ex">Exercise 2 — Logging on BeginPlay and every Tick</h2>
+  <div class="goalrow"><span class="chip lvl">Beginner</span><span class="chip time">~15 min</span>
+    <span class="chip">Skills: lifecycle events, Output Log, Print String</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Feel the difference between <code>BeginPlay</code> (once) and <code>Tick</code> (every frame) — the exact distinction GEMSTAR's managers rely on.</p>
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <code>BP_Spinner</code> → Event Graph. From <b>Event BeginPlay</b>, add a <b>Print String</b> node. Set its text to <code>"BeginPlay ran once"</code>.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">From <b>Event Tick</b>, add another <b>Print String</b>. Drag the <b>Delta Seconds</b> output pin into the String input — Unreal auto-inserts a float→string conversion. This prints the per-frame time.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">On the Tick Print String, expand the node (small arrow) and set <b>Duration = 0.0</b> so messages don't pile up on screen.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Compile, Save, Play. Open <b>Window → Output Log</b> (dock it). Watch the messages.</span></label></li>
+    </ol>
+    <div class="expect"><code>BeginPlay ran once</code> appears a single time at the start. The Delta Seconds value prints continuously (a small number like <code>0.016</code> ≈ 1/60s) — one line per frame.</div>
+    <div class="callout note"><b>Connect to GEMSTAR:</b> <code>ASUMOManager</code> and <code>AEsminiManager</code> step their simulators inside <code>Tick</code>, and do one-time setup in <code>BeginPlay</code>. You just reproduced that pattern in miniature.</div>
+    <div class="selfcheck">Why does the Delta Seconds number get bigger if you drag the editor window or stress your machine? (Because each frame takes longer, so more real time elapses per Tick.)</div>
+  </div>
+
+  <!-- EX 3 -->
+  <h2 class="ex">Exercise 3 — A DataTable and reading a row</h2>
+  <div class="goalrow"><span class="chip lvl">Beginner+</span><span class="chip time">~25 min</span>
+    <span class="chip">Skills: Structs, DataTables, CSV import, lookups</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Build a DataTable and look up a row — the exact mechanism <code>ue_vehicle_feature</code> uses to map a vehicle type to a spawnable Blueprint.</p>
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Content Browser → <b>Add → Blueprints → Structure</b>. Name it <code>S_VehicleRow</code>. Add two variables: <code>DisplayName</code> (String) and <code>TopSpeed</code> (Float). Save.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Add → <b>Miscellaneous → Data Table</b>. When prompted for the row structure, pick <code>S_VehicleRow</code>. Name it <code>DT_Vehicles</code>.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <code>DT_Vehicles</code>. Click <b>Add (+)</b> twice to add two rows. Name them <code>Car</code> and <code>Bus</code>; fill in DisplayName and TopSpeed for each.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <code>BP_Spinner</code> (reuse it). On <b>BeginPlay</b>, add a <b>Get Data Table Row</b> node. Set <b>Data Table = DT_Vehicles</b>, <b>Row Name = Car</b>.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">From the node's <b>Out Row</b> struct pin, drag and use <b>Break S_VehicleRow</b>. Wire <code>DisplayName</code> into a <b>Print String</b>.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Note the <b>Row Found</b> boolean exec output — branch on it in real code. Compile, Save, Play.</span></label></li>
+    </ol>
+    <div class="expect">On play, the Output Log / screen prints the <code>DisplayName</code> you entered for the <code>Car</code> row.</div>
+    <div class="callout tip"><b>Bonus:</b> Change Row Name to a value that doesn't exist (e.g. <code>Truck</code>) and observe the <b>Row Found</b> pin go false. GEMSTAR must handle exactly this — a simulator sending an unknown vehicle type.</div>
+    <div class="selfcheck">In GEMSTAR's vehicle feature, what would the equivalent row contain instead of TopSpeed? (A reference to a vehicle <em>Blueprint/class</em> to spawn — open <span class="path">VehicleTableRow.h</span> later to confirm.)</div>
+  </div>
+
+  <a class="backlink" href="../learning-guide.html">← Back to the main guide</a>
+  <footer>Phase 1 exercises · progress saved locally</footer>
+</div>
+<script src="steps.js"></script>
+</body>
+</html>

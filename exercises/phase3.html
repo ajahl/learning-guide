@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 3 Exercises · Game Features</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-key="phase3">
+<header class="hero">
+  <div class="crumb"><a href="../learning-guide.html">← Interactive Learning Guide</a> · Phase 3</div>
+  <h1>Phase 3 — Game Features &amp; Config: Exercises</h1>
+  <p>Build the plugin system GEMSTAR is made of. By the end, a plugin that announces itself when activated — exactly what every GEMSTAR feature's <code>*_Loader</code> does.</p>
+</header>
+<div class="progressbar"><div class="inner">
+  <strong style="font-size:13px">Steps done</strong>
+  <div class="bar"><span id="bar"></span></div><span class="pct" id="pct">0 / 0</span>
+</div></div>
+
+<div class="wrap">
+
+  <div class="callout arc"><span class="lab">↪ The assignment</span><em>On a live route a feature has to switch itself on. This is the spark — the loader that brings the lidar to life the moment its config flag is set.</em></div>
+
+  <div class="callout warn"><b>Read this first.</b> Most tutorials teach <code>UGameFeatureAction</code> for feature init.
+  <b>GEMSTAR doesn't use that.</b> This exercise builds the pattern GEMSTAR <em>actually</em> uses — a loader
+  <code>UActorComponent</code> on the Root that spawns its manager. The “Standard vs GEMSTAR” box at the bottom shows
+  the difference so you know both.</div>
+
+  <!-- EX 1 -->
+  <h2 class="ex">Exercise 1 — A loader component that spawns a manager <span style="color:var(--accent2)">★ the real GEMSTAR pattern</span></h2>
+  <div class="goalrow"><span class="chip lvl">Intermediate</span><span class="chip time">~50 min</span>
+    <span class="chip">Skills: UActorComponent, GetOwner, Cast&lt;&gt;, SpawnActor, config-gated init</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Reproduce <a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/GEMSTAR_Lidar_Loader.cpp" href="../../Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/GEMSTAR_Lidar_Loader.cpp">GEMSTAR_Lidar_Loader</a> in miniature: a component on a "root" actor that, on <code>BeginPlay</code>, checks a bool and spawns another actor.</p>
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Make a target to spawn: <b>Tools → New C++ Class → Actor</b>, name it <code>AMyManager</code> (just logs in its own <code>BeginPlay</code> for now).</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Make a "root" actor <code>AMyRoot</code> with a bool flag mirroring GEMSTAR's <code>UseLidar</code>:</span></label></li>
+    </ol>
+<pre><code>// MyRoot.h
+UCLASS()
+class CPPSCRATCH_API AMyRoot : public AActor
+{
+    GENERATED_BODY()
+public:
+    UPROPERTY(EditAnywhere, Category = "Toy")
+    bool bUseManager = true;        // mirrors GEMSTARRoot::UseLidar
+};</code></pre>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Make the loader as a <b>component</b> (exactly like <code>UGEMSTAR_Lidar_Loader : public UActorComponent</code>):</span></label></li>
+    </ol>
+<pre><code>// MyLoader.h
+UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
+class CPPSCRATCH_API UMyLoader : public UActorComponent
+{
+    GENERATED_BODY()
+protected:
+    virtual void BeginPlay() override;
+};</code></pre>
+<pre><code>// MyLoader.cpp
+#include "MyLoader.h"
+#include "MyRoot.h"
+#include "MyManager.h"
+
+void UMyLoader::BeginPlay()
+{
+    Super::BeginPlay();
+
+    // 1. Who owns me? (the component is attached to AMyRoot)
+    AMyRoot* Root = Cast&lt;AMyRoot&gt;(GetOwner());
+    if (!Root)
+    {
+        UE_LOG(LogTemp, Error, TEXT("Loader not on AMyRoot"));
+        return;
+    }
+    // 2. Config gate — the Use* bool
+    if (Root->bUseManager)
+    {
+        // 3. Spawn the manager into the world
+        FActorSpawnParameters Params;
+        AMyManager* Mgr = GetWorld()->SpawnActor&lt;AMyManager&gt;(
+            AMyManager::StaticClass(), FTransform::Identity, Params);
+        UE_LOG(LogTemp, Warning, TEXT("Loader spawned manager: %s"),
+               *GetNameSafe(Mgr));
+        // 4. (GEMSTAR then calls Root->RegisterManagerAndGetConfiguration(Mgr)
+        //     and Mgr->Configure(...) — the config hand-off.)
+    }
+}</code></pre>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Build. Place an <code>AMyRoot</code> in the level. Select it → <b>Add Component → My Loader</b> (it's BlueprintSpawnable). Play.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Toggle <code>bUseManager</code> off in the Details panel and replay — the manager no longer spawns.</span></label></li>
+    </ol>
+    <div class="expect">With the flag on: "Loader spawned manager…" logs, then the manager's own BeginPlay logs. With it off: neither. You've reproduced GEMSTAR's exact init mechanism — component → <code>Cast</code> owner → check <code>Use*</code> → <code>SpawnActor</code>.</div>
+    <details class="tshoot"><summary>Troubleshooting</summary>
+      <table>
+        <tr><td><b><code>GetOwner()</code> returns null / cast fails</b></td><td>The component must be attached to an <code>AMyRoot</code> instance. In GEMSTAR the loaders live on <code>BP_GEMSTAR_Root</code>.</td></tr>
+        <tr><td><b>Component not in "Add Component" list</b></td><td>Needs <code>meta=(BlueprintSpawnableComponent)</code> and a successful build.</td></tr>
+        <tr><td><b><code>SpawnActor</code> returns null</b></td><td>Needs a valid <code>UWorld</code> (only during play) and a non-abstract class.</td></tr>
+      </table>
+    </details>
+    <div class="selfcheck">Open <a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/GEMSTAR_Lidar_Loader.cpp" href="../../Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/GEMSTAR_Lidar_Loader.cpp">GEMSTAR_Lidar_Loader.cpp</a> and match each numbered comment to a real line. The only thing you skipped is the config hand-off (<code>RegisterManagerAndGetConfiguration</code> + <code>Configure</code>) — find those two calls.</div>
+  </div>
+
+  <!-- Standard vs GEMSTAR -->
+  <h2 class="ex">Standard UE vs GEMSTAR — the same job, two mechanisms</h2>
+  <div class="card">
+    <p>Both achieve "when this feature is on, set it up." Knowing both means you won't be confused by tutorials <em>or</em> by this codebase.</p>
+    <table>
+      <tr><th></th><th>Standard UE (tutorials, Epic samples)</th><th>GEMSTAR (this repo)</th></tr>
+      <tr><td><b>Init hook</b></td><td><code>UGameFeatureAction</code> on a <code>GameFeatureData</code> asset</td><td><code>GEMSTAR_*_Loader</code>, a plain <code>UActorComponent</code></td></tr>
+      <tr><td><b>Trigger</b></td><td>Feature state → Active (engine drives it)</td><td>Owner actor's <code>BeginPlay</code></td></tr>
+      <tr><td><b>Lives where</b></td><td>The plugin's GameFeatureData asset</td><td>A component on <code>BP_GEMSTAR_Root</code> in the level</td></tr>
+      <tr><td><b>On / off switch</b></td><td>Activate/deactivate the feature</td><td>A <code>Use*</code> bool on <code>AGEMSTARRoot</code> (from config)</td></tr>
+      <tr><td><b>Does the work</b></td><td><code>OnGameFeatureActivating(...)</code></td><td><code>Cast&lt;AGEMSTARRoot&gt;(GetOwner())</code> → <code>SpawnActor</code> → <code>Configure</code></td></tr>
+    </table>
+    <div class="callout note"><b>Why did GEMSTAR choose the component pattern?</b> Likely simplicity and explicitness: putting one
+    <code>BP_GEMSTAR_Root</code> in a map with loader components is easy to reason about and lets a level/Blueprint author
+    add features without touching GameFeatureData assets. The trade-off: it leans on actor placement rather than the
+    engine's feature-state system. Both are valid; just know <em>which</em> you're reading.</div>
+    <div class="selfcheck">If a teammate says "add a GameFeatureAction to initialize the lidar," what do you correct them on? (GEMSTAR initializes via the loader component on the Root + a <code>Use*</code> bool — not GameFeatureActions.)</div>
+  </div>
+
+  <!-- EX 2 -->
+  <h2 class="ex">Exercise 2 — Read your own value from a config .ini</h2>
+  <div class="goalrow"><span class="chip lvl">Intermediate</span><span class="chip time">~30 min</span>
+    <span class="chip">Skills: GConfig, .ini sections, config-driven behavior</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Read a custom key from an <code>.ini</code> at runtime — the mechanism <code>AGEMSTARRoot</code> uses to decide which features to enable and how sensors are configured.</p>
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">In your project's <code>Config/DefaultGame.ini</code>, add a section:</span></label></li>
+    </ol>
+<pre><code>[/Script/MyToy.Settings]
+GreetingCount=3
+GreetingText=Hello from config</code></pre>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">In an Actor's <code>BeginPlay</code>, read it with <code>GConfig</code>:</span></label></li>
+    </ol>
+<pre><code>int32 Count = 0;
+FString Text;
+GConfig->GetInt(TEXT("/Script/MyToy.Settings"),  TEXT("GreetingCount"), Count, GGameIni);
+GConfig->GetString(TEXT("/Script/MyToy.Settings"), TEXT("GreetingText"),  Text,  GGameIni);
+
+for (int32 i = 0; i &lt; Count; ++i)
+{
+    UE_LOG(LogTemp, Warning, TEXT("%d: %s"), i, *Text);
+}</code></pre>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Build and Play. Then change <code>GreetingCount</code> in the ini and re-play — no recompile needed.</span></label></li>
+    </ol>
+    <div class="expect">The greeting logs exactly <code>GreetingCount</code> times. Editing the ini changes behavior without touching code — the whole point of config-driven design.</div>
+    <div class="selfcheck">Open <span class="path">DefaultGemstar.ini</span> and <span class="path">GemstarLidarTest.ini</span>. Identify the section/key pattern. You now understand how GEMSTAR turns a sensor's FOV/range/ray-count into runtime behavior — and you'll edit exactly these in Phase 6.</div>
+  </div>
+
+  <a class="backlink" href="../learning-guide.html">← Back to the main guide</a>
+  <footer>Phase 3 exercises · progress saved locally</footer>
+</div>
+<script src="steps.js"></script>
+</body>
+</html>

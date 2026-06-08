@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 2 Exercises · C++ in Unreal</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-key="phase2">
+<header class="hero">
+  <div class="crumb"><a href="../learning-guide.html">← Interactive Learning Guide</a> · Phase 2</div>
+  <h1>Phase 2 — C++ in Unreal: Exercises</h1>
+  <p>Use a <strong>C++</strong> scratch project. These build the exact constructs GEMSTAR uses — <code>UPROPERTY</code>, the Actor lifecycle, and <strong>UInterfaces</strong> (the pattern the whole codebase is wired with).</p>
+</header>
+<div class="progressbar"><div class="inner">
+  <strong style="font-size:13px">Steps done</strong>
+  <div class="bar"><span id="bar"></span></div><span class="pct" id="pct">0 / 0</span>
+</div></div>
+
+<div class="wrap">
+
+  <div class="callout arc"><span class="lab">↪ The assignment</span><em>The shuttle's sensors and the traffic simulator never call each other directly — they meet through interfaces. Master that here and the rest of GEMSTAR stops looking like magic.</em></div>
+
+  <div class="callout note"><b>One-time setup:</b> New project → <b>Games → Blank</b>, but this time choose <b>C++</b>. Name it
+  <code>CppScratch</code>. Replace <code>CppScratch</code> with your real project name (the API macro
+  <code>CPPSCRATCH_API</code> follows the project name in UPPER_CASE). After adding C++ classes, build from
+  Xcode (or let the editor's <b>"compile"</b> button rebuild).</div>
+
+  <div class="callout note"><b>Platform note:</b> these C++ exercises compile on <em>any</em> OS (Windows/macOS/Linux) because
+  they use only Core/Engine — no third-party libs. GEMSTAR's real plugins are different: they build on Windows but need a
+  Mac/Linux port (see the platform table in the main guide, and Phase 2.5).</div>
+
+  <!-- EX 1 -->
+  <h2 class="ex">Exercise 1 — An Actor with an editable UPROPERTY</h2>
+  <div class="goalrow"><span class="chip lvl">Beginner</span><span class="chip time">~30 min</span>
+    <span class="chip">Skills: UCLASS, UPROPERTY, Tick, reflection → editor</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Expose a C++ variable to the editor and use it in <code>Tick</code> — see the reflection system bridge C++ and the editor UI.</p>
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">In the editor: <b>Tools → New C++ Class → Actor</b>. Name it <code>SpinningActor</code>. The editor generates the <code>.h</code>/<code>.cpp</code> and rebuilds.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Edit the header — declare a tickable actor with an editable speed (replace the API macro with yours):</span></label></li>
+    </ol>
+<pre><code>// SpinningActor.h
+UCLASS()
+class CPPSCRATCH_API ASpinningActor : public AActor
+{
+    GENERATED_BODY()
+public:
+    ASpinningActor();
+
+    // EditAnywhere → shows up in the Details panel; the value is reflected.
+    UPROPERTY(EditAnywhere, Category = "Spin")
+    float SpinRateDegPerSec = 90.f;
+
+protected:
+    virtual void Tick(float DeltaTime) override;
+};</code></pre>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Implement the source — note the <b>* DeltaTime</b>, the framerate-independent fix you noticed in Phase 1:</span></label></li>
+    </ol>
+<pre><code>// SpinningActor.cpp
+#include "SpinningActor.h"
+
+ASpinningActor::ASpinningActor()
+{
+    PrimaryActorTick.bCanEverTick = true;   // opt in to Tick
+}
+
+void ASpinningActor::Tick(float DeltaTime)
+{
+    Super::Tick(DeltaTime);
+    AddActorLocalRotation(FRotator(0.f, SpinRateDegPerSec * DeltaTime, 0.f));
+}</code></pre>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Build (Xcode <code>⌘B</code>, or the editor compile button). Drag a <code>SpinningActor</code> into the level — add a cube mesh component via a child Blueprint, or just add a StaticMesh in the constructor.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Select it in the level. In <b>Details → Spin</b>, change <b>SpinRateDegPerSec</b> to 360. Play.</span></label></li>
+    </ol>
+    <div class="expect">The <code>SpinRateDegPerSec</code> field appears in the Details panel (that's <code>UPROPERTY(EditAnywhere)</code> working). At 360 it does one full turn per second, regardless of framerate.</div>
+    <details class="tshoot"><summary>Troubleshooting</summary>
+      <table>
+        <tr><td><b>Property not in Details panel</b></td><td>You likely forgot <code>UPROPERTY(EditAnywhere)</code>, or didn't rebuild. A plain C++ member without the macro is invisible to the editor.</td></tr>
+        <tr><td><b>Build error: redefinition / API macro</b></td><td><code>CPPSCRATCH_API</code> must match <em>your</em> project's module name in caps. Check another generated header.</td></tr>
+        <tr><td><b>Doesn't tick</b></td><td><code>PrimaryActorTick.bCanEverTick = true;</code> must be in the constructor.</td></tr>
+      </table>
+    </details>
+    <div class="selfcheck">Why does the editor even know <code>SpinRateDegPerSec</code> exists? (The <code>UPROPERTY</code> macro feeds Unreal's reflection system, which the Details panel reads — plain C++ members are invisible to it.)</div>
+  </div>
+
+  <!-- EX 2 -->
+  <h2 class="ex">Exercise 2 — A UInterface, implemented and called <span style="color:var(--accent2)">★ core GEMSTAR pattern</span></h2>
+  <div class="goalrow"><span class="chip lvl">Intermediate</span><span class="chip time">~45 min</span>
+    <span class="chip">Skills: UINTERFACE, BlueprintNativeEvent, Execute_, Implements&lt;&gt;</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Define a contract, implement it on an Actor, and call it <em>through the interface</em> without knowing the concrete type. This is precisely how <code>IGEMSTARManager</code> / <code>IVehicleDataDispatcher</code> decouple GEMSTAR's plugins.</p>
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Tools → New C++ Class → Unreal Interface</b>. Name it <code>Pingable</code>. This generates the paired <code>UPingable</code> / <code>IPingable</code> types.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Declare one method on the interface:</span></label></li>
+    </ol>
+<pre><code>// Pingable.h
+UINTERFACE(MinimalAPI, Blueprintable)
+class UPingable : public UInterface
+{
+    GENERATED_BODY()
+};
+
+class IPingable
+{
+    GENERATED_BODY()
+public:
+    // BlueprintNativeEvent: has a C++ default AND can be overridden in Blueprint.
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Ping")
+    void Ping(const FString& From);
+};</code></pre>
+      <div class="callout note"><b>Why two classes?</b> <code>UPingable</code> is the reflection stub Unreal needs; <code>IPingable</code> is the one your classes actually inherit. Every UE interface — including GEMSTAR's — comes in this <code>U.../I...</code> pair.</div>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Make an Actor implement it. New C++ Actor <code>PingResponder</code>:</span></label></li>
+    </ol>
+<pre><code>// PingResponder.h
+#include "Pingable.h"
+UCLASS()
+class CPPSCRATCH_API APingResponder : public AActor, public IPingable
+{
+    GENERATED_BODY()
+public:
+    // For a BlueprintNativeEvent named Ping, you override Ping_Implementation:
+    virtual void Ping_Implementation(const FString& From) override;
+};</code></pre>
+<pre><code>// PingResponder.cpp
+#include "PingResponder.h"
+void APingResponder::Ping_Implementation(const FString& From)
+{
+    UE_LOG(LogTemp, Warning, TEXT("Ping received from %s"), *From);
+}</code></pre>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Call it <em>through the interface</em> from somewhere (e.g. a second actor's BeginPlay). The key idiom — never call <code>Ping_Implementation</code> directly:</span></label></li>
+    </ol>
+<pre><code>// Calling code — note we hold an AActor*, not an APingResponder*
+if (TargetActor && TargetActor->Implements&lt;UPingable&gt;())
+{
+    // Execute_Ping routes to C++ override OR a Blueprint override, correctly.
+    IPingable::Execute_Ping(TargetActor, TEXT("Pinger"));
+}</code></pre>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Build, place a <code>PingResponder</code> in the level, wire your caller to target it, Play, watch the Output Log.</span></label></li>
+    </ol>
+    <div class="expect"><code>Ping received from Pinger</code> logs as a warning. The caller never referenced <code>APingResponder</code> — only the <code>UPingable</code> contract.</div>
+    <details class="tshoot"><summary>Troubleshooting</summary>
+      <table>
+        <tr><td><b>Linker error on Ping</b></td><td>For <code>BlueprintNativeEvent</code> you must implement <code>Ping_<u>Implementation</u></code>, not <code>Ping</code>.</td></tr>
+        <tr><td><b>Implements&lt;&gt; always false</b></td><td>The actor must inherit <code>public IPingable</code> AND be a UObject-derived class. Rebuild after adding the base.</td></tr>
+        <tr><td><b>Why not just call Ping() directly?</b></td><td>Direct calls bypass Blueprint overrides and crash if the object doesn't implement the interface. Always use <code>Execute_</code>.</td></tr>
+      </table>
+    </details>
+    <div class="selfcheck">Open <span class="path">GEMSTARManager.h</span> in GEMSTAR and find the <code>UINTERFACE</code>/<code>I...</code> pair and a <code>...Implementation</code> method. You should now recognize every piece. <b>This is the single most important transfer in the whole plan.</b></div>
+  </div>
+
+  <!-- EX 3 -->
+  <h2 class="ex">Exercise 3 — Two modules, one depending on the other</h2>
+  <div class="goalrow"><span class="chip lvl">Intermediate</span><span class="chip time">~40 min</span>
+    <span class="chip">Skills: modules, Build.cs, public/private deps</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Split code into two modules and link them via <code>.Build.cs</code> — the same dependency mechanism that lets every GEMSTAR feature depend on <code>GEMSTAR_Interfaces</code>.</p>
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">The simplest path on a project: make a <b>plugin</b> with its own module. <b>Edit → Plugins → Add → Blank (C++)</b>. Name it <code>CoreContracts</code>. This creates <code>Plugins/CoreContracts/Source/CoreContracts/</code> with a <code>.Build.cs</code>.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Move (or create) your <code>Pingable</code> interface into the <code>CoreContracts</code> module's <code>Public/</code> folder. Rebuild.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">In your <b>game module's</b> <code>&lt;Project&gt;.Build.cs</code>, add the plugin module as a dependency so it can use the interface:</span></label></li>
+    </ol>
+<pre><code>// CppScratch.Build.cs
+PublicDependencyModuleNames.AddRange(new string[] {
+    "Core", "CoreUObject", "Engine", "InputCore",
+    "CoreContracts"          // &lt;-- now PingResponder can #include "Pingable.h"
+});</code></pre>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Confirm <code>APingResponder</code> (in the game module) still compiles while <code>Pingable.h</code> lives in the other module. Rebuild from Xcode.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Now compare: open GEMSTAR's <span class="path">ue_lidar_feature</span> Build.cs and find <code>"GEMSTAR_Interfaces"</code> in its dependency list — identical idea.</span></label></li>
+    </ol>
+    <div class="expect">The project builds with the interface defined in one module and used in another. Removing <code>"CoreContracts"</code> from the deps produces an "unresolved include / unknown type" error — proving the link is real.</div>
+    <div class="callout tip"><b>Public vs Private deps:</b> use <b>PublicDependencyModuleNames</b> when your <em>headers</em> expose the other module's types (as here — <code>APingResponder.h</code> includes <code>Pingable.h</code>). Use <b>PrivateDependencyModuleNames</b> when only your <code>.cpp</code> needs it.</div>
+    <div class="selfcheck">Why does GEMSTAR put all interfaces in one <code>GEMSTAR_Interfaces</code> module that every feature lists as a public dependency? (So features share contracts without depending on each other — the hub-and-spoke you saw in Phase 0.)</div>
+  </div>
+
+  <a class="backlink" href="../learning-guide.html">← Back to the main guide</a>
+  <footer>Phase 2 exercises · progress saved locally</footer>
+</div>
+<script src="steps.js"></script>
+</body>
+</html>

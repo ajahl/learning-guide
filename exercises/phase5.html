@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 5 Exercises · OSI / Domain</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-key="phase5">
+<header class="hero">
+  <div class="crumb"><a href="../learning-guide.html">← Interactive Learning Guide</a> · Phase 5</div>
+  <h1>Phase 5 — OSI &amp; the Domain: Worksheet</h1>
+  <p>Domain knowledge made concrete by reading <em>this repo's</em> OSI headers and the <code>ToOSI</code> bridge. Mostly reading/inspection — fully doable on any OS, no build needed.</p>
+</header>
+<div class="progressbar"><div class="inner">
+  <strong style="font-size:13px">Steps done</strong>
+  <div class="bar"><span id="bar"></span></div><span class="pct" id="pct">0 / 0</span>
+</div></div>
+
+<div class="wrap">
+
+  <div class="callout arc"><span class="lab">↪ The assignment</span><em>A detection the authority can't read is worthless. Here you learn how that ray becomes an OSI message any approval tool can ingest — turning your result into evidence.</em></div>
+
+  <div class="callout note"><b>Why a worksheet, not a build exercise:</b> OSI/esmini/SUMO are external standards/tools. You learn them
+  by understanding their <em>data shapes</em> and seeing where GEMSTAR touches them — which you can do entirely by
+  reading. Pair this with the videos linked in the main guide's Phase 5.</div>
+
+  <!-- EX 1 -->
+  <h2 class="ex">Exercise 1 — Anatomy of an OSI message (read protobuf-generated headers)</h2>
+  <div class="goalrow"><span class="chip lvl">Intermediate</span><span class="chip time">~40 min</span>
+    <span class="chip">Skills: protobuf, OSI message structure</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Learn to read a <code>.pb.h</code> file and recognize the OSI message hierarchy GEMSTAR serializes to.</p>
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <a class="path" data-file="Plugins/gemstar_interfaces/ThirdParty/osi3/include/osi3/osi_common.pb.h" href="../../Plugins/gemstar_interfaces/ThirdParty/osi3/include/osi3/osi_common.pb.h">osi_common.pb.h</a>. <b>Predict:</b> what basic geometric types will a sensor framework need? Then find them.</span></label></li>
+    </ol>
+    <details class="tshoot"><summary>What to look for</summary>
+      Classes like <code>Vector3d</code>, <code>Orientation3d</code>, <code>Dimension3d</code>, <code>Spherical3d</code>,
+      <code>Timestamp</code>. Each is a protobuf <em>message</em>: note the generated accessors — <code>x()</code> /
+      <code>set_x()</code> for scalars, <code>mutable_position()</code> for nested messages. <b>This getter/setter pattern
+      is how all OSI fields are read and written.</b>
+    </details>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <a class="path" data-file="Plugins/gemstar_interfaces/ThirdParty/osi3/include/osi3/osi_object.pb.h" href="../../Plugins/gemstar_interfaces/ThirdParty/osi3/include/osi3/osi_object.pb.h">osi_object.pb.h</a>. <b>Predict:</b> what describes a vehicle in the world — position, size, type, velocity? Find <code>BaseMoving</code> and <code>MovingObject</code>.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <a class="path" data-file="Plugins/gemstar_interfaces/ThirdParty/osi3/include/osi3/osi_groundtruth.pb.h" href="../../Plugins/gemstar_interfaces/ThirdParty/osi3/include/osi3/osi_groundtruth.pb.h">osi_groundtruth.pb.h</a> and <a class="path" data-file="Plugins/gemstar_interfaces/ThirdParty/osi3/include/osi3/osi_sensorview.pb.h" href="../../Plugins/gemstar_interfaces/ThirdParty/osi3/include/osi3/osi_sensorview.pb.h">osi_sensorview.pb.h</a>. <b>Predict:</b> how do GroundTruth and SensorView relate?</span></label></li>
+    </ol>
+    <details class="tshoot"><summary>What to look for</summary>
+      <b>GroundTruth</b> = the complete, perfect world state (all moving/stationary objects, lanes, lights).
+      <b>SensorView</b> wraps a GroundTruth (often filtered to a sensor's viewpoint) plus the sensor's mounting/config.
+      A repeated field (<code>moving_object()</code> list) is protobuf's array — note <code>_size()</code> and
+      <code>add_*()</code> accessors.
+    </details>
+    <div class="selfcheck">Sketch the nesting: <code>SensorView → GroundTruth → MovingObject[] → BaseMoving → {Vector3d position, Dimension3d, Orientation3d}</code>. If you can draw that, you can read any OSI message.</div>
+  </div>
+
+  <!-- EX 2 -->
+  <h2 class="ex">Exercise 2 — Trace the UE → OSI bridge in <code>ToOSI</code></h2>
+  <div class="goalrow"><span class="chip lvl">Intermediate</span><span class="chip time">~45 min</span>
+    <span class="chip">Skills: coordinate mapping, the integration boundary</span></div>
+  <div class="card">
+    <p><b>Objective:</b> See exactly how a UE actor's transform becomes an OSI message — the single most strategic file in GEMSTAR.</p>
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/Utils/ToOSI.h" href="../../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/Utils/ToOSI.h">ToOSI.h</a>. List the conversion functions (e.g. <code>toOSIBaseMoving</code>, <code>toOSIBaseStationary</code>, <code>toMountingPosition</code>). <b>Predict:</b> what UE type goes in, what OSI type comes out of each?</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Private/Utils/ToOSI.cpp" href="../../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Private/Utils/ToOSI.cpp">ToOSI.cpp</a>. Pick <code>toOSIBaseMoving</code> and follow it: where does it read the UE <code>FVector</code>/<code>FRotator</code>, and which OSI <code>set_*</code> / <code>mutable_*</code> calls does it use?</span></label></li>
+    </ol>
+    <details class="tshoot"><summary>What to look for — and a subtlety</summary>
+      It reads the actor's location/rotation and writes them into an OSI <code>BaseMoving</code> via the
+      protobuf setters you met in Exercise 1. <b>Subtlety to hunt for:</b> any <b>unit or axis conversion</b> — UE uses
+      centimeters and a left-handed Z-up frame; OSI uses <b>metres</b> and a right-handed frame. Look for a <code>/100</code>,
+      a sign flip, or a yaw adjustment. This mismatch is a classic integration bug source.
+    </details>
+    <div class="selfcheck">Why is <code>ToOSI</code> the boundary every feature crosses? (It's the one place UE world state becomes the common OSI language — logging, communication, and interop all funnel through it.)</div>
+  </div>
+
+  <!-- EX 3 -->
+  <h2 class="ex">Exercise 3 — Find where OSI traces are written</h2>
+  <div class="goalrow"><span class="chip lvl">Intermediate</span><span class="chip time">~30 min</span>
+    <span class="chip">Skills: serialization, trace files, the logger</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Connect the message types to the files GEMSTAR actually produces in <code>Output/</code> — exactly what the “ASAM OSI trace file” video describes.</p>
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">In <span class="path">ue_logger_feature</span>, open the trace-writer source. <b>Predict:</b> does it write text or binary? How are multiple messages framed in one file?</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Find where it calls a protobuf <b>serialize</b> method (e.g. <code>SerializeToString</code> / <code>SerializeToArray</code>) and how each message's length is recorded.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Identify which message type(s) it writes per frame (GroundTruth? SensorView? SensorData?) and trace one back to its <code>ToOSI</code> origin.</span></label></li>
+    </ol>
+    <details class="tshoot"><summary>What to look for</summary>
+      OSI traces are typically <b>length-prefixed binary</b> protobuf: each record = a 4-byte size then the serialized
+      message bytes. That's why a player needs to know the message type to read them back. Confirm the type the logger
+      writes, and you've closed the loop: actor → <code>ToOSI</code> → message → serialized bytes → file in <code>Output/</code>.
+    </details>
+    <div class="selfcheck">Explain to an imaginary colleague what a <code>.osi</code> trace contains and how another ASAM-OSI tool could replay it. If you can, you understand GEMSTAR's interoperability story.</div>
+  </div>
+
+  <!-- EX 4 -->
+  <h2 class="ex">Exercise 4 — Map scenario files to the simulators (concept)</h2>
+  <div class="goalrow"><span class="chip lvl">Starter</span><span class="chip time">~20 min</span>
+    <span class="chip">Skills: esmini/SUMO inputs, co-simulation</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Know what feeds each traffic simulator and where GEMSTAR points it. (Watch the esmini/SUMO videos from the main guide alongside this.)</p>
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Write down: what is <code>.xodr</code> (OpenDRIVE) vs <code>.xosc</code> (OpenSCENARIO)? Which describes <em>roads</em>, which describes <em>what happens</em>?</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">In <span class="path">ue_esmini_feature</span>'s manager/loader, find where a scenario path is read (likely from config). Note that esmini consumes the scenario and emits per-object state each step.</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">In <span class="path">ue_sumo_feature</span>'s manager, find the <code>.sumocfg</code> reference and the step interval. <b>Predict:</b> what does SUMO emit that esmini doesn't? (Hint: it also dispatches traffic-light state.)</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Tie it together: both managers implement <code>IVehicleDataDispatcher</code> and broadcast vehicle state — the consumers (vehicle manager, logger) don't care which simulator produced it. That's co-simulation.</span></label></li>
+    </ol>
+    <div class="callout note"><b>Mac note:</b> you can read all of this, but esmini/SUMO are Windows-only binaries in this repo — running them needs the Windows setup or a port (see the main guide's platform caveat).</div>
+    <div class="selfcheck">In one sentence: why can GEMSTAR swap esmini for SUMO without changing the vehicle manager or logger? (They all speak the same dispatcher/OSI contracts — the decoupling from Phase 2.)</div>
+  </div>
+
+  <a class="backlink" href="../learning-guide.html">← Back to the main guide</a>
+  <footer>Phase 5 worksheet · progress saved locally</footer>
+</div>
+<script src="steps.js"></script>
+</body>
+</html>

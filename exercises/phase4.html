@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 4 Exercises · Lidar → Visualizer Code Read</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-key="phase4">
+<header class="hero">
+  <div class="crumb"><a href="../learning-guide.html">← Interactive Learning Guide</a> · Phase 4</div>
+  <h1>Phase 4 — Guided Code Read: Worksheet</h1>
+  <p>A structured trace through GEMSTAR's <strong>lidar → visualizer</strong> path. For each file, predict what data enters and leaves, then open it and check. On <b>Windows</b> you can also run it live; on <b>macOS</b> it works as a <em>paper trace</em> — either way, no build is required to do the reading.</p>
+</header>
+<div class="progressbar"><div class="inner">
+  <strong style="font-size:13px">Steps done</strong>
+  <div class="bar"><span id="bar"></span></div><span class="pct" id="pct">0 / 0</span>
+</div></div>
+
+<div class="wrap">
+
+  <div class="callout arc"><span class="lab">↪ The assignment</span><em>The heart of the assignment. Trace this ray and you're watching the exact mechanism that decides whether the shuttle sees the pedestrian — or misses them.</em></div>
+
+  <div class="callout note"><b>How to work this:</b> read each "Predict" prompt and answer it in your head (or notes) <em>before</em>
+  opening the file. Then open it, confirm, and reveal the "What to look for" to check yourself. The goal is to
+  hold the whole data path in your head by the end.</div>
+
+  <!-- 1 -->
+  <h2 class="ex">Station 1 — The inputs: <code>GemstarLidarTest.ini</code></h2>
+  <div class="card">
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Resources/GemstarLidarTest.ini" href="../../Plugins/GameFeatures/ue_lidar_feature/Resources/GemstarLidarTest.ini">GemstarLidarTest.ini</a>. <b>Predict:</b> which numbers here would change the <em>shape</em> of the point cloud vs its <em>density</em>?</span></label></li>
+    </ol>
+    <details class="tshoot"><summary>What to look for</summary>
+      A <code>[lidar:sensorN]</code> section per sensor: <b>MountingPosition X/Y/Z</b> &amp; <b>Orientation</b> (where the sensor sits),
+      <b>NumberOfRaysHorizontal/Vertical</b> (density), <b>FoVHorizontal/Vertical</b> (coverage), <b>Range</b> &amp;
+      <b>DistanceHalfFalloff</b>. Rays = density; FOV + Range = shape/extent.
+    </details>
+  </div>
+
+  <!-- 2 -->
+  <h2 class="ex">Station 2 — The orchestrator: <code>AGEMSTARRoot</code></h2>
+  <div class="card">
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Private/GEMSTARRoot.cpp" href="../../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Private/GEMSTARRoot.cpp">GEMSTARRoot.cpp</a>. <b>Predict:</b> how does the Root know the lidar feature should be turned on?</span></label></li>
+    </ol>
+    <details class="tshoot"><summary>What to look for</summary>
+      Config reads (use-flags like <code>UseLidar</code>), and the <b>RegisterDataflow</b> / <b>MountOn</b> calls from
+      the <code>IGEMSTARManager</code> interface (Phase 2!). The Root caches managers and connects producers to consumers.
+      It does <em>not</em> contain lidar math — it wires, it doesn't compute.
+    </details>
+  </div>
+
+  <!-- 3 -->
+  <h2 class="ex">Station 3 — Spawn &amp; configure: <code>ALidarSensorManager</code></h2>
+  <div class="card">
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Public/LidarSensorManager.h" href="../../Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Public/LidarSensorManager.h">LidarSensorManager.h</a> then <a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/LidarSensorManager.cpp" href="../../Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/LidarSensorManager.cpp">.cpp</a>. <b>Predict:</b> what struct carries the parsed ini values to each spawned sensor?</span></label></li>
+    </ol>
+    <details class="tshoot"><summary>What to look for</summary>
+      An <code>FSensorConfigData</code>-style struct populated from the ini, and a spawn loop creating one
+      <code>SimpleLidar</code> per configured sensor, applying mounting transform + parameters. <b>Enters:</b> config.
+      <b>Leaves:</b> spawned, configured sensor actors.
+    </details>
+  </div>
+
+  <!-- 4 -->
+  <h2 class="ex">Station 4 — The sensor: <code>SimpleLidar</code></h2>
+  <div class="card">
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/SimpleLidar.cpp" href="../../Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Private/SimpleLidar.cpp">SimpleLidar.cpp</a>. <b>Predict:</b> what UE call turns "a ray at angle θ" into "a hit point in the world"?</span></label></li>
+    </ol>
+    <details class="tshoot"><summary>What to look for</summary>
+      Nested loops over horizontal × vertical rays computing directions from FOV, then a <b>line trace</b>
+      (<code>LineTraceSingleByChannel</code> or similar) per ray; hits become points. <b>Enters:</b> config + world geometry.
+      <b>Leaves:</b> a set of 3D points (the cloud).
+    </details>
+  </div>
+
+  <!-- 5 -->
+  <h2 class="ex">Station 5 — The hand-off: dispatcher + update interface</h2>
+  <div class="card">
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/SensorDataDispatcher.h" href="../../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/SensorDataDispatcher.h">SensorDataDispatcher.h</a> + <a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/SensorDataUpdate.h" href="../../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/SensorDataUpdate.h">SensorDataUpdate.h</a>. <b>Predict:</b> who calls whom — does the sensor push, or does the visualizer pull?</span></label></li>
+    </ol>
+    <details class="tshoot"><summary>What to look for</summary>
+      A <b>dispatcher</b> holding a list of receivers and a method to broadcast; an <b>update</b> interface the receivers
+      implement. The producer <em>pushes</em> by calling the update method on each registered receiver. This is your
+      Phase 2 <code>Execute_</code> pattern at work — the sensor never knows it's talking to the visualizer.
+    </details>
+  </div>
+
+  <!-- 6 -->
+  <h2 class="ex">Station 6 — The sink: <code>AVisualizerManager</code> → <code>PointCloudVisualizer</code></h2>
+  <div class="card">
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <a class="path" data-file="Plugins/GameFeatures/ue_visualizer_feature/Source/ue_visualizer_featureRuntime/Public/VisualizerManager.h" href="../../Plugins/GameFeatures/ue_visualizer_feature/Source/ue_visualizer_featureRuntime/Public/VisualizerManager.h">VisualizerManager.h</a> + <a class="path" data-file="Plugins/GameFeatures/ue_visualizer_feature/Source/ue_visualizer_featureRuntime/Public/PointCloudVisualizer.h" href="../../Plugins/GameFeatures/ue_visualizer_feature/Source/ue_visualizer_featureRuntime/Public/PointCloudVisualizer.h">PointCloudVisualizer.h</a>. <b>Predict:</b> what does it do with each incoming point?</span></label></li>
+    </ol>
+    <details class="tshoot"><summary>What to look for</summary>
+      It implements <code>ISensorDataUpdate</code> (registered as a receiver), converts OSI points to world positions,
+      and renders markers. <b>Enters:</b> sensor data via the update callback. <b>Leaves:</b> visible debug points.
+    </details>
+  </div>
+
+  <!-- bonus: testers -->
+  <h2 class="ex">Bonus A — Shortcut in: the <code>*Tester</code> classes</h2>
+  <div class="card">
+    <p>Each feature ships a tester/mockup that implements the dispatcher or update interfaces directly — the easiest way
+    to see <em>one side</em> of the pub-sub in isolation, without the whole pipeline.</p>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <a class="path" data-file="Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Public/LidarSensorTester.h" href="../../Plugins/GameFeatures/ue_lidar_feature/Source/ue_lidar_featureRuntime/Public/LidarSensorTester.h">LidarSensorTester.h</a>. Note it implements <code>ISensorSpawnerDispatcher</code> + <code>ISensorDataUpdate</code> — i.e. it can both spawn sensors and receive their data. <b>It's a self-contained harness.</b></span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Open <a class="path" data-file="Plugins/GameFeatures/ue_logger_feature/Source/ue_logger_featureRuntime/Public/SensorSpawnerMockup.h" href="../../Plugins/GameFeatures/ue_logger_feature/Source/ue_logger_featureRuntime/Public/SensorSpawnerMockup.h">SensorSpawnerMockup.h</a> — a mock producer the logger can be tested against. See how it fakes the dispatcher side.</span></label></li>
+    </ol>
+    <div class="selfcheck">Why are these the fastest way to understand an interface? (They show exactly which methods a receiver must implement — the contract made concrete, with nothing else in the way.)</div>
+  </div>
+
+  <!-- bonus: other features -->
+  <h2 class="ex">Bonus B — Trace the camera &amp; vehicle paths yourself</h2>
+  <div class="card">
+    <p>Same producer→consumer shape as lidar→visualizer, different mechanics. Apply the exact predict-then-check method.</p>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Camera:</b> <a class="path" data-file="Plugins/GameFeatures/ue_camera_feature/Source/ue_camera_featureRuntime/Public/CameraSensorManager.h" href="../../Plugins/GameFeatures/ue_camera_feature/Source/ue_camera_featureRuntime/Public/CameraSensorManager.h">CameraSensorManager.h</a> → <a class="path" data-file="Plugins/GameFeatures/ue_camera_feature/Source/ue_camera_featureRuntime/Public/CameraSensor.h" href="../../Plugins/GameFeatures/ue_camera_feature/Source/ue_camera_featureRuntime/Public/CameraSensor.h">CameraSensor.h</a>. <b>Predict:</b> what replaces the raycast? (A <b>SceneCapture</b> rendering to a <b>RenderTarget</b> texture — images instead of points.)</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Vehicle:</b> <a class="path" data-file="Plugins/GameFeatures/ue_vehicle_feature/Source/ue_vehicle_featureRuntime/Public/VehicleManager.h" href="../../Plugins/GameFeatures/ue_vehicle_feature/Source/ue_vehicle_featureRuntime/Public/VehicleManager.h">VehicleManager.h</a> + <a class="path" data-file="Plugins/GameFeatures/ue_vehicle_feature/Source/ue_vehicle_featureRuntime/Public/VehicleTableRow.h" href="../../Plugins/GameFeatures/ue_vehicle_feature/Source/ue_vehicle_featureRuntime/Public/VehicleTableRow.h">VehicleTableRow.h</a>. <b>Predict:</b> here the manager is a <em>consumer</em> — it implements <code>IVehicleDataUpdate</code>, looks up a row in the DataTable by vehicle type, and <code>SpawnActor</code>s a Chaos vehicle. Trace data <em>in</em> (simulator) rather than out.</span></label></li>
+    </ol>
+    <div class="selfcheck">Vehicle is the mirror image of lidar: lidar <em>produces</em> sensor data; vehicle <em>consumes</em> simulator data. Both use the same dispatcher/update interface machinery. If you see that symmetry, you've got the architecture.</div>
+  </div>
+
+  <!-- final -->
+  <h2 class="ex">Final — Reconstruct &amp; (optionally) tweak</h2>
+  <div class="card">
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">Without looking, write the chain with the exact class/file at each arrow: ini → ? → ? → ? → ? → ? → ?</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt">For each arrow, label what data crosses it (config / spawned actors / points / OSI sensor data / markers).</span></label></li>
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>If you have a working build:</b> open the lidar test map, change <code>NumberOfRaysHorizontal</code> in the ini, play, and watch the cloud get denser/sparser. (Mac: see platform caveat — do it as a paper trace if you can't build.)</span></label></li>
+    </ol>
+    <div class="selfcheck">You pass this phase when you can name every box from memory and say what enters/leaves each. That single mental model unlocks <em>all</em> the other features — they're the same shape with different producers/consumers.</div>
+  </div>
+
+  <a class="backlink" href="../learning-guide.html">← Back to the main guide</a>
+  <footer>Phase 4 worksheet · progress saved locally</footer>
+</div>
+<script src="steps.js"></script>
+</body>
+</html>
