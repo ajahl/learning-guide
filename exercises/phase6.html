@@ -104,6 +104,144 @@
     <div class="selfcheck">If you can answer all five without re-reading the lidar feature, you've reached the goal of the whole plan: you understand GEMSTAR's architecture well enough to extend it.</div>
   </div>
 
+  <!-- EX 5 -->
+  <h2 class="ex">Exercise 5 — Scaffold a new GEMSTAR feature plugin (concrete capstone)</h2>
+  <div class="goalrow"><span class="chip lvl">Advanced</span><span class="chip time">~2–3 hr</span>
+    <span class="chip">Touches: a new plugin + the shared hub</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Actually build the plugin Exercise 4 sketched. You'll create a minimal new GameFeature plugin <code>ue_example_feature</code> that the Root spawns and configures exactly like every real feature — proof you can <em>extend</em> GEMSTAR, not just read it. It's a pure consumer (no native libraries), so it compiles on any platform.</p>
+
+    <h3 class="kicker">The files you'll create</h3>
+<pre>Plugins/GameFeatures/ue_example_feature/
+  ue_example_feature.uplugin
+  Content/ue_example_feature.uasset            (GameFeatureData — made in-editor)
+  Source/ue_example_featureRuntime/
+    ue_example_featureRuntime.Build.cs
+    Public/GEMSTAR_Example_Loader.h   Private/GEMSTAR_Example_Loader.cpp
+    Public/ExampleManager.h           Private/ExampleManager.cpp</pre>
+
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Manifest</b> — <code>ue_example_feature.uplugin</code>: an <code>ExplicitlyLoaded</code> GameFeature with one Runtime module that depends on <code>GEMSTAR_Interfaces</code>.
+<pre>{
+  "FileVersion": 3, "Version": 1, "VersionName": "1.0",
+  "FriendlyName": "ue_example_feature",
+  "Category": "Game Features", "ExplicitlyLoaded": true,
+  "CanContainContent": true, "BuiltInInitialFeatureState": "Active",
+  "Modules": [ { "Name": "ue_example_featureRuntime", "Type": "Runtime", "LoadingPhase": "Default" } ],
+  "Plugins": [ { "Name": "GEMSTAR_Interfaces", "Enabled": true } ]
+}</pre></span></label></li>
+
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Build.cs</b> — copy any feature's and trim the deps to what a pure consumer needs:
+<pre>using UnrealBuildTool;
+public class ue_example_featureRuntime : ModuleRules {
+  public ue_example_featureRuntime(ReadOnlyTargetRules Target) : base(Target) {
+    PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+    PublicDependencyModuleNames.AddRange(new[] { "Core", "GEMSTAR_Interfaces" });
+    PrivateDependencyModuleNames.AddRange(new[] { "CoreUObject", "Engine", "Slate", "SlateCore", "Projects" });
+  }
+}</pre></span></label></li>
+
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Manager</b> — <code>ExampleManager.h/.cpp</code>: an <code>AActor</code> that implements <code>IGEMSTARManager</code> and exposes the <code>Configure(...)</code> the loader calls.
+<pre>// ExampleManager.h
+UCLASS()
+class UE_EXAMPLE_FEATURERUNTIME_API AExampleManager : public AActor, public IGEMSTARManager {
+  GENERATED_BODY()
+public:
+  void Configure(TMap&lt;FString, FInnerConfig&gt; Configs, AGEMSTARRoot* Root);
+private:
+  AGEMSTARRoot* GEMSTARRoot = nullptr;
+};
+// ExampleManager.cpp
+void AExampleManager::Configure(TMap&lt;FString, FInnerConfig&gt; Configs, AGEMSTARRoot* Root) {
+  GEMSTARRoot = Root;
+  UE_LOG(LogTemp, Log, TEXT("ExampleManager configured with %d section(s)"), Configs.Num());
+}</pre></span></label></li>
+
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Loader</b> — <code>GEMSTAR_Example_Loader.h/.cpp</code>: the real GEMSTAR entry point (the Phase 3 pattern). A <code>UActorComponent</code> that on <code>BeginPlay</code> casts its owner, checks a <code>Use*</code> bool, spawns the manager, and configures it.
+<pre>void UGEMSTAR_Example_Loader::BeginPlay() {
+  Super::BeginPlay();
+  AGEMSTARRoot* Root = Cast&lt;AGEMSTARRoot&gt;(GetOwner());
+  if (Root &amp;&amp; Root->UseExample) {
+    AExampleManager* Mgr = GetWorld()->SpawnActor&lt;AExampleManager&gt;();
+    TMap&lt;FString, FInnerConfig&gt; cfg = Root->RegisterManagerAndGetConfiguration(Mgr);
+    Mgr->Configure(cfg, Root);
+  }
+}</pre></span></label></li>
+
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Hub edit</b> (the one coupling point) — in <a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/GEMSTARRoot.h" href="../../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Public/GEMSTARRoot.h">GEMSTARRoot.h</a> add <code>UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="GEMSTAR") bool UseExample = true;</code>, and in <a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Private/GEMSTARRoot.cpp" href="../../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/Private/GEMSTARRoot.cpp">GEMSTARRoot.cpp</a>'s <code>RegisterManagerAndGetConfiguration</code> add a branch: <code>else if (ClassName.Contains("example")) return GetConfigurations("example");</code></span></label></li>
+
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Register it</b> — add <code>{ "Name": "ue_example_feature", "Enabled": true }</code> to <a class="path" data-file="GEMSTAR.uproject" href="../../GEMSTAR.uproject">GEMSTAR.uproject</a>'s <code>Plugins</code>, and an <code>[example]</code> section to <a class="path" data-file="Config/DefaultGemstar.ini" href="../../Config/DefaultGemstar.ini">DefaultGemstar.ini</a>.</span></label></li>
+
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Editor steps</b> (the non-headless bits): create the <code>ue_example_feature</code> <code>GameFeatureData</code> asset (right-click in the plugin's Content → Miscellaneous → Data Asset → GameFeatureData), and on <code>BP_GEMSTAR_Root</code> <b>Add Component → GEMSTAR_Example_Loader</b>. Save.</span></label></li>
+
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>Build &amp; verify</b>: regenerate project files, build, relaunch the editor, press Play. The Output Log shows <code>ExampleManager configured…</code> — your feature woke up through the same path as lidar.</span></label></li>
+    </ol>
+    <div class="expect">A new feature plugin that the Root discovers, spawns, and configures on play — toggleable via <code>UseExample</code>. Replace the log with real work (implement a dispatcher/update interface) and it becomes a true producer or consumer like the built-in features.</div>
+    <div class="callout tip"><b>Why this is the whole architecture in one exercise:</b> manifest (loading) → Loader component (ignition) → Manager + <code>IGEMSTARManager</code> (the contract) → <code>Use*</code> flag + ini (config). Every GEMSTAR feature is this skeleton with real sensor/sim logic added.</div>
+    <div class="callout note"><b>Hub coupling, on purpose:</b> step 5 edits the shared <code>gemstar_interfaces</code> — the one place features touch each other (the <code>Use*</code> / <code>ClassName.Contains</code> routing). It's the architecture's known trade-off; note it as you wire it.</div>
+  </div>
+
+  <!-- EX 6 -->
+  <h2 class="ex">Exercise 6 — Preload a feature's assets the Epic way (Asset Manager + Asset Bundles)</h2>
+  <div class="goalrow"><span class="chip lvl">Advanced</span><span class="chip time">~2 hr</span>
+    <span class="chip">Touches: a GameFeature plugin + GameFeatureData + DefaultGame.ini</span></div>
+  <div class="card">
+    <p><b>Objective:</b> Make a feature plugin <em>declare the assets it needs and have them loaded before it activates</em> — the idiomatic Unreal way (Asset Manager + Asset Bundles, triggered by a <code>UGameFeatureAction</code> on the plugin's <code>GameFeatureData</code>). Today GEMSTAR loads assets lazily — e.g. <code>PointCloudVisualizer</code> does <code>LoadObject&lt;UMaterial&gt;(...)</code> for its point-marker material, and <code>VehicleManager::UpdateVehicleMap</code> <code>LoadObject&lt;UClass&gt;</code>s each vehicle Blueprint under <code>/ue_vehicle_feature/Blueprints/Vehicles</code> on first spawn — which hitches and can miss assets. This is the standard fix.</p>
+
+    <div class="callout note"><b>How this relates to Phase 3.</b> Phase 3 showed GEMSTAR spawns managers with a <em>loader component</em>, not a <code>UGameFeatureAction</code>. Asset <em>preloading</em> is the job <code>UGameFeatureAction</code> + the Asset Manager were actually designed for — so here you use the Epic idiom, and it <em>coexists</em> with the loader. "Bundle = <em>what</em> to load (declared on a data asset); Action = <em>when</em> to load it (the feature's activate/deactivate lifecycle)."</div>
+
+    <h3 class="kicker">Follow Epic's guide</h3>
+    <ul class="tasks">
+      <li><input type="checkbox"><label>Read Epic — <a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/asset-management-in-unreal-engine" target="_blank" rel="noopener">Asset Management</a> (Primary Data Assets, the Asset Manager, <b>Asset Bundles</b>)</label></li>
+      <li><input type="checkbox"><label>Read Epic — <a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/game-features-and-modular-gameplay-in-unreal-engine" target="_blank" rel="noopener">Game Features and Modular Gameplay</a> (the <code>GameFeatureData</code> <code>Actions</code> array)</label></li>
+    </ul>
+
+    <h3 class="kicker">Steps</h3>
+    <ol class="steps">
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>1 · Declare the manifest</b> — a <code>UPrimaryDataAsset</code> whose soft-pointer list is tagged into an Asset Bundle. The <code>AssetBundles</code> meta tag is what makes those assets loadable as one named unit.
+<pre>UCLASS()
+class UGemstarAssetSet : public UPrimaryDataAsset {
+  GENERATED_BODY()
+public:
+  UPROPERTY(EditAnywhere, meta = (AssetBundles = "Active"))
+  TArray&lt;TSoftObjectPtr&lt;UObject&gt;&gt; PreloadAssets;
+
+  virtual FPrimaryAssetId GetPrimaryAssetId() const override {
+    return FPrimaryAssetId(TEXT("GemstarAssetSet"), GetFName());
+  }
+};</pre></span></label></li>
+
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>2 · Register the type with the Asset Manager</b> — in <a class="path" data-file="Config/DefaultGame.ini" href="../../Config/DefaultGame.ini">DefaultGame.ini</a>, under <code>[/Script/Engine.AssetManagerSettings]</code>, scan your plugin's mount root:
+<pre>+PrimaryAssetTypesToScan=(PrimaryAssetType="GemstarAssetSet",
+  AssetBaseClass="/Script/ue_example_featureRuntime.GemstarAssetSet",
+  bHasBlueprintClasses=False, bIsEditorOnly=False,
+  Directories=((Path="/ue_example_feature")), Rules=(CookRule=AlwaysCook))</pre></span></label></li>
+
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>3 · The lifecycle trigger</b> — a <code>UGameFeatureAction</code> that loads the bundle on activate and releases it on deactivate. <code>LoadPrimaryAsset(..., {"Active"})</code> loads the manifest <em>and</em> its bundle-tagged assets and keeps them pinned (no manual <code>FStreamableHandle</code> bookkeeping).
+<pre>UPROPERTY(EditAnywhere, Category="Preload")
+TSoftObjectPtr&lt;UGemstarAssetSet&gt; AssetSet;   // set per slice in the GameFeatureData
+
+void UGameFeatureAction_PreloadAssets::OnGameFeatureActivating(FGameFeatureActivatingContext&amp; Ctx) {
+  FPrimaryAssetId Id = UAssetManager::Get().GetPrimaryAssetIdForPath(AssetSet.ToSoftObjectPath());
+  UAssetManager::Get().LoadPrimaryAsset(Id, TArray&lt;FName&gt;{ TEXT("Active") });
+}
+void UGameFeatureAction_PreloadAssets::OnGameFeatureDeactivating(FGameFeatureDeactivatingContext&amp; Ctx) {
+  FPrimaryAssetId Id = UAssetManager::Get().GetPrimaryAssetIdForPath(AssetSet.ToSoftObjectPath());
+  UAssetManager::Get().UnloadPrimaryAsset(Id);
+}</pre></span></label></li>
+
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>4 · Module dep</b> — add <code>"GameFeatures"</code> to the plugin's <code>Build.cs</code> dependency list (that's where <code>UGameFeatureAction</code> lives; <code>UAssetManager</code>/<code>UPrimaryDataAsset</code> are already in <code>Engine</code>).</span></label></li>
+
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>5 · Wire it in the editor</b> (the non-headless bits): create a <code>DA_ExampleAssetSet</code> (a <code>UGemstarAssetSet</code>) and fill <code>PreloadAssets</code> with the slice's assets (e.g. a material + Blueprints). Open the plugin's <code>GameFeatureData</code> asset → add a <b>Preload Assets</b> action to its <code>Actions</code> array → set its <code>AssetSet</code>.</span></label></li>
+
+      <li><label class="checkrow"><input type="checkbox" class="step"><span class="stxt"><b>6 · Verify</b> — build, relaunch, open the Output Log, play. <code>LogGameFeatures</code>/<code>LogAssetManager</code> show the slice loading <code>GemstarAssetSet</code> with the <code>Active</code> bundle on activation; console <code>AssetManager.DumpLoadedAssets</code> lists them as resident. A consumer's lazy <code>LoadObject</code> now returns the already-loaded asset — no hitch. Stopping/deactivating releases them.</span></label></li>
+    </ol>
+    <div class="expect">The feature's assets are resident <em>before</em> any manager runs, loaded on activation and unloaded on deactivation — no first-use hitch, no "asset not found" fallback. You've used the Asset Manager + Asset Bundles + a GameFeatureAction exactly as Epic's docs prescribe.</div>
+    <div class="callout tip"><b>Why the bundle tag matters:</b> without <code>meta=(AssetBundles="Active")</code> the soft pointers are just references the Asset Manager won't batch-load. The tag is what turns "a list of assets" into "a loadable set keyed to the feature's lifecycle."</div>
+    <div class="selfcheck">Why preload via a GameFeatureAction instead of just <code>LoadObject</code> in <code>BeginPlay</code>? (Activation-time loading is declarative, pins the assets for the feature's whole active lifetime, unloads cleanly on deactivate, and is cook-aware — the lazy load is none of those.)</div>
+  </div>
+
   <a class="backlink" href="../index.html">← Back to the main guide</a>
   <footer>Phase 6 exercises · progress saved locally</footer>
 </div>

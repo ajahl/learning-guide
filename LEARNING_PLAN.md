@@ -158,37 +158,6 @@ configures its manager at startup — and why it's *not* a `UGameFeatureAction`.
 
 ---
 
-## Phase 2.5 — Linking Native Third-Party Libraries (~3–5 h)
-
-> *Chapter 2½ · The Foreign Engines* — esmini and SUMO are bolted-on engines: shipped & ready on Windows, and the reason the machine won't fully start on macOS/Linux.
-
-**Goal:** Understand how GEMSTAR links precompiled native libraries (esmini, SUMO, OSI, protobuf)
-into UE via `Build.cs` — why it builds on **Windows** and what a **macOS/Linux** port would take.
-*This is GEMSTAR's signature complexity and the prerequisite to any non-Windows build.*
-
-**The four jobs of a ThirdParty `Build.cs`:**
-
-| Call | Role |
-|------|------|
-| `PublicIncludePaths.Add(...)` | compile-time: lets your C++ `#include` the lib's headers |
-| `PublicAdditionalLibraries.Add(...)` | link-time: links the static lib (`.lib`/`.a`/`.dylib`) |
-| `RuntimeDependencies.Add(...)` | run-time: copies a runtime DLL next to the binary so it loads |
-| `PublicDefinitions.Add(...)` | compile flags, e.g. `GOOGLE_PROTOBUF_NO_RTTI` (protobuf vs UE RTTI) |
-
-**Why it builds on Windows but not macOS:** in [ue_esmini_featureRuntime.Build.cs](../Plugins/GameFeatures/ue_esmini_feature/Source/ue_esmini_featureRuntime/ue_esmini_featureRuntime.Build.cs)
-and [GEMSTAR_Interfaces.Build.cs](../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/GEMSTAR_Interfaces.Build.cs)
-every third-party link sits inside `if (Target.Platform == UnrealTargetPlatform.Win64)` — so on **Windows**
-it links and runs. The `Mac` branch is empty/commented and no `.dylib`/`.a` Mac binaries are shipped → on
-**macOS** the headers include but nothing links. Not a quick fix; a porting task.
-
-**Exercise:** Dissect both Build.cs files (find the include path, the static-lib link, the runtime DLL
-copy, the empty Mac branch), then scope what a Mac port needs. (Walkthrough in `exercises/phase2b.html`.)
-
-**Checkpoint:** Name the four roles above, and explain in one sentence why GEMSTAR builds on Windows
-but not on macOS.
-
----
-
 ## Phase 4 — Guided Code Read: the Lidar → Visualizer path (~3–5 h)
 
 > *Chapter 4 · Following the Beam* — Trace one lidar ray from a config number to a dot on screen: the pedestrian scenario in miniature.
@@ -276,7 +245,7 @@ this in parallel with Phase 3–4.
 
 ---
 
-## Phase 6 — Make a Change (ongoing)
+## Phase 6 — Make a Change (~7–10 h, then ongoing)
 
 > *Chapter 6 · Your Mark* — The authority's question was about a sensor parameter you can now add. Answer it. You're changing the machine now, not reading it.
 
@@ -300,14 +269,14 @@ The **learning** in every phase is identical on all platforms — only whether t
 | Platform | Builds & runs? | Toolchain / notes |
 |----------|----------------|-------------------|
 | **Windows** (documented platform) | ✅ **Everything**, incl. esmini & SUMO | VS 2022 · `PostGitPull_ReGenVSFiles.bat` → `GEMSTAR.sln`. Win64 libs ship in the repo. Smoothest path. |
-| **macOS** | ⚠️ Pure-UE features only (lidar, visualizer, vehicle, camera) | Xcode · `PostGitPull_ReGenXcodeFiles.command` → `.xcworkspace`. esmini/SUMO/OSI/protobuf ship **Windows-only** binaries — those need a port (Phase 2.5). |
+| **macOS** | ⚠️ Pure-UE features only (lidar, visualizer, vehicle, camera) | Xcode · `PostGitPull_ReGenXcodeFiles.command` → `.xcworkspace`. esmini/SUMO/OSI/protobuf ship **Windows-only** binaries — those need a port. |
 | **Linux** | ⚠️ Partial | Some libs ship a `.a` (e.g. esmini); OSI/SUMO branches incomplete. |
 
 - **On Windows:** ignore any "do it as a paper trace" note — you can build and run for real, including
   the full esmini/SUMO co-simulation.
 - **On macOS:** the native-library features (`gemstar_interfaces`, `ue_esmini_feature`,
   `ue_sumo_feature`) fail to link because only Windows binaries ship (no `.dylib`/`.a`). Stick to the
-  **lidar/visualizer/vehicle/camera** path (pure UE built-ins), or take on the Phase 2.5 port.
+  **lidar/visualizer/vehicle/camera** path (pure UE built-ins).
 - **This guide was authored on** an Intel Mac (x86_64) with a UE 5.7.4 source build, so a few examples
   show macOS paths — substitute your own engine/repo location on Windows (`Engine\Binaries\Win64\UnrealEditor.exe`,
   `C:\…\gemstar`). The in-browser "open file" links auto-detect your repo path, so they work either way.

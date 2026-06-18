@@ -324,56 +324,6 @@ AGEMSTARRoot ─ orchestrates all managers via IGEMSTARManager + DefaultGemstar.
     </div>
   </section>
 
-  <!-- ============ PHASE 2.5 ============ -->
-  <section class="phase collapsed" data-id="p2b">
-    <div class="head">
-      <div class="num">2½</div>
-      <div class="titles"><h2>Linking Native Third-Party Libraries</h2><div class="sub">GEMSTAR's signature complexity — and why it builds on Windows but not (yet) on macOS/Linux · ~3–5 h</div></div>
-      <span class="donecount"></span><span class="chev">▾</span>
-    </div>
-    <div class="body">
-      <div class="chapter"><span class="ch">Chapter 2½ · The Foreign Engines</span><span class="beat">Two of the machine's most powerful parts aren't Unreal at all — esmini and SUMO are <span class="arc">foreign engines bolted on</span> through Build.cs. On Windows they're shipped and ready; on macOS/Linux they're the reason the machine won't fully start. Meet them here.</span></div>
-      <p>This is the part most UE tutorials never cover, yet it's central to GEMSTAR: linking <b>precompiled native
-      libraries</b> (esmini, SUMO, OSI, protobuf) into UE modules via <code>Build.cs</code>. On <b>Windows</b> the libs
-      ship in the repo and everything links; on <b>macOS/Linux</b> this is exactly where the build breaks — so understanding
-      it is the prerequisite to any port. Either way it's the same mechanism worth knowing.</p>
-
-      <h3 class="kicker">The four moving parts in a ThirdParty Build.cs</h3>
-      <table>
-        <tr><th>Call</th><th>What it does</th></tr>
-        <tr><td><code>PublicIncludePaths.Add(...)</code></td><td>Lets your C++ <code>#include</code> the library's headers (e.g. <code>esminiLib.hpp</code>, <code>osi3/*.pb.h</code>)</td></tr>
-        <tr><td><code>PublicAdditionalLibraries.Add(...)</code></td><td>Links the static lib (<code>.lib</code>/<code>.a</code>/<code>.dylib</code>) at build time — the actual symbols</td></tr>
-        <tr><td><code>RuntimeDependencies.Add(...)</code></td><td>Copies a runtime DLL (e.g. <code>esminiLib.dll</code>) next to the binary so it loads at run time</td></tr>
-        <tr><td><code>PublicDefinitions.Add(...)</code></td><td>Compile flags the lib needs — e.g. <code>GOOGLE_PROTOBUF_NO_RTTI</code> (protobuf clashes with UE's RTTI settings)</td></tr>
-      </table>
-
-      <div class="callout warn" style="border-left:3px solid var(--bad);background:var(--panel2);padding:9px 14px;border-radius:0 8px 8px 0;margin:12px 0">
-        <b>Why it builds on Windows but not macOS — see it for yourself.</b> Open the Build.cs files below. Every
-        third-party link sits inside <code>if (Target.Platform == UnrealTargetPlatform.Win64)</code> — so on <b>Windows</b>
-        the libs link and the project runs. The <code>Mac</code> branch is empty/commented and there are no
-        <code>.dylib</code>/<code>.a</code> Mac binaries in the repo, so on <b>macOS</b> the headers include but nothing
-        links → unresolved symbols. Not a five-minute bug; a porting task.
-      </div>
-
-      <h3 class="kicker">Tasks</h3>
-      <ul class="tasks">
-        <li><input type="checkbox"><label>Read <a class="path" data-file="Plugins/GameFeatures/ue_esmini_feature/Source/ue_esmini_featureRuntime/ue_esmini_featureRuntime.Build.cs" href="../Plugins/GameFeatures/ue_esmini_feature/Source/ue_esmini_featureRuntime/ue_esmini_featureRuntime.Build.cs">ue_esmini_featureRuntime.Build.cs</a> — find the include path, the <code>.lib</code> link, and the <code>RuntimeDependencies</code> DLL copy</label></li>
-        <li><input type="checkbox"><label>Read <a class="path" data-file="Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/GEMSTAR_Interfaces.Build.cs" href="../Plugins/gemstar_interfaces/Source/GEMSTAR_Interfaces/GEMSTAR_Interfaces.Build.cs">GEMSTAR_Interfaces.Build.cs</a> — spot the OSI + protobuf links and <code>GOOGLE_PROTOBUF_NO_RTTI</code></label></li>
-        <li><input type="checkbox"><label>Confirm the <code>Win64</code> link vs the empty <code>Mac</code> branch in both — this is the exact build/no-build line</label></li>
-        <li><input type="checkbox"><label>Read Epic — “Third-Party Libraries” / “Integrating a third-party library into Unreal Engine” docs</label></li>
-        <li><input type="checkbox"><label>Sketch what a Mac port needs: Mac builds of esmini/SUMO/OSI/protobuf + a <code>Mac</code> branch linking the <code>.dylib</code>/<code>.a</code></label></li>
-      </ul>
-      <a class="walk" href="exercises/phase2b.html"><span class="arrow">▸</span> Open walkthrough (dissect the Build.cs files + scope the Mac port)</a>
-
-      <details class="reveal"><summary>Checkpoint — reveal</summary>
-        You can name the four roles (<code>PublicIncludePaths</code> = headers, <code>PublicAdditionalLibraries</code> =
-        link static lib, <code>RuntimeDependencies</code> = copy runtime DLL, <code>PublicDefinitions</code> = compile flags),
-        and explain in one sentence why GEMSTAR builds on Windows but not on macOS (third-party links are Win64-only and
-        no Mac binaries are shipped).
-      </details>
-    </div>
-  </section>
-
   <!-- ============ PHASE 3 ============ -->
   <section class="phase collapsed" data-id="p3">
     <div class="head">
@@ -549,17 +499,19 @@ AVisualizerManager → PointCloudVisualizer   renders points</pre>
   <section class="phase collapsed" data-id="p6">
     <div class="head">
       <div class="num">6</div>
-      <div class="titles"><h2>Make a Change</h2><div class="sub">From reader to contributor · ongoing</div></div>
+      <div class="titles"><h2>Make a Change</h2><div class="sub">From reader to contributor · ~7–10 h, then ongoing</div></div>
       <span class="donecount"></span><span class="chev">▾</span>
     </div>
     <div class="body">
       <div class="chapter"><span class="ch">Chapter 6 · Your Mark</span><span class="beat">The authority's question was about a sensor parameter — one you can now add. Make the change, watch it alter what the shuttle "sees." <span class="arc">You're no longer reading the machine; you're changing it.</span> Assignment complete.</span></div>
-      <a class="walk" href="exercises/phase6.html"><span class="arrow">▸</span> Open step-by-step walkthrough (4 real GEMSTAR changes)</a>
+      <a class="walk" href="exercises/phase6.html"><span class="arrow">▸</span> Open step-by-step walkthrough (6 real GEMSTAR changes)</a>
       <ul class="tasks">
         <li><input type="checkbox"><label>Add a config key to a sensor <code>.ini</code> and consume it in the manager (smallest real change)</label></li>
         <li><input type="checkbox"><label>Add <code>UE_LOG</code> traces through the lidar→visualizer path; watch data move</label></li>
         <li><input type="checkbox"><label>Add a small field to a <code>ToOSI</code> conversion and log it from the logger</label></li>
         <li><input type="checkbox"><label>(Advanced) Sketch a new sensor feature plugin mirroring <code>ue_lidar_feature</code></label></li>
+        <li><input type="checkbox"><label>(Capstone) Scaffold a new GameFeature plugin end-to-end — <code>.uplugin</code> + <code>Build.cs</code> + Loader + Manager + <code>Use*</code> flag + config</label></li>
+        <li><input type="checkbox"><label>(Epic idiom) Preload a feature's assets via a Primary Data Asset + Asset Bundle + <code>GameFeatureAction</code> (Asset Manager)</label></li>
       </ul>
       <details class="reveal"><summary>Checkpoint — reveal</summary>
         Before writing code you can name which files a given feature change touches and why — config →
@@ -574,10 +526,10 @@ AVisualizerManager → PointCloudVisualizer   renders points</pre>
     <table style="margin-top:8px">
       <tr><th>Platform</th><th>Builds &amp; runs?</th><th>Toolchain / notes</th></tr>
       <tr><td><b>Windows</b> (the documented platform)</td><td>✅ <b>Everything</b> — incl. esmini &amp; SUMO</td><td>VS 2022 · <code>PostGitPull_ReGenVSFiles.bat</code> → <code>GEMSTAR.sln</code>. The Win64 libs ship in the repo. This is the smoothest path.</td></tr>
-      <tr><td><b>macOS</b></td><td>⚠️ Pure-UE features only (lidar, visualizer, vehicle, camera)</td><td>Xcode · <code>PostGitPull_ReGenXcodeFiles.command</code> → <code>.xcworkspace</code>. esmini/SUMO/OSI/protobuf ship <b>Windows-only</b> binaries (no <code>.dylib</code>) — those features need a port (Phase 2.5).</td></tr>
+      <tr><td><b>macOS</b></td><td>⚠️ Pure-UE features only (lidar, visualizer, vehicle, camera)</td><td>Xcode · <code>PostGitPull_ReGenXcodeFiles.command</code> → <code>.xcworkspace</code>. esmini/SUMO/OSI/protobuf ship <b>Windows-only</b> binaries (no <code>.dylib</code>) — those features need a port.</td></tr>
       <tr><td><b>Linux</b></td><td>⚠️ Partial</td><td>Some libs ship a <code>.a</code> (e.g. esmini); OSI/SUMO branches are incomplete.</td></tr>
     </table>
-    <span style="color:var(--muted);font-size:13px">On <b>Windows</b>, ignore the "do it as a paper trace" notes — you can build and run for real. On <b>macOS</b> (e.g. an Intel Mac with a UE source build), stick to the lidar/visualizer path or take on the Phase 2.5 port.</span>
+    <span style="color:var(--muted);font-size:13px">On <b>Windows</b>, ignore the "do it as a paper trace" notes — you can build and run for real. On <b>macOS</b> (e.g. an Intel Mac with a UE source build), stick to the lidar/visualizer path.</span>
   </div>
 
   <div class="story">
